@@ -1,0 +1,65 @@
+<section class="mx-auto max-w-5xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Processes</h1>
+  <p class="mt-1 text-sm text-muted">Design the steps a request goes through, then publish them for people to start.</p>
+
+  <form class="card mt-4 flex flex-wrap items-start gap-2 p-4" (submit)="$event.preventDefault(); create()">
+    <label class="block min-w-56 flex-1">
+      <span class="text-xs font-medium text-muted">Name</span>
+      <input data-testid="new-name" class="mt-1 block w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+             placeholder="Travel request" [value]="newName()" (input)="nameTyped($any($event.target).value)" />
+    </label>
+    <label class="block">
+      <span class="text-xs font-medium text-muted">Key</span>
+      <input data-testid="new-key" class="mt-1 block w-56 rounded-md border border-line-strong px-3 py-1.5 font-mono text-sm"
+             placeholder="travel-request" [value]="newKey()" (input)="keyEdited($any($event.target).value)" />
+    </label>
+    <button type="submit" data-testid="create" [disabled]="!canCreate()"
+            class="btn btn-primary mt-5 px-4 py-1.5 text-sm">New process</button>
+    @if (keyError(); as error) {
+      <p data-testid="key-error" class="w-full text-xs text-danger-text">{{ error }}</p>
+    }
+  </form>
+
+  @if (failed()) {
+    <div class="alert-error mt-4 p-4 text-sm">
+      Processes could not be loaded. <button type="button" class="ml-2 link" (click)="reload()">Retry</button>
+    </div>
+  } @else if (processes(); as list) {
+    <ul class="card mt-4 divide-y divide-line">
+      @for (process of list; track process.key) {
+        <li data-testid="process-row" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+          <a class="min-w-0 flex-1" [routerLink]="['/admin/processes', process.key]">
+            <span class="block font-medium hover:underline">{{ process.name }}</span>
+            <span class="block font-mono text-xs text-muted">{{ process.key }}</span>
+          </a>
+          @if (process.hasDraft) {
+            <span data-testid="draft-saved" class="text-xs text-muted" [title]="process.draftUpdatedAt | date: 'medium'">
+              Draft saved {{ process.draftUpdatedAt | date: 'mediumDate' }}
+            </span>
+          }
+          @if (process.latestVersion) {
+            <span class="text-sm text-muted">version {{ process.latestVersion }}</span>
+            @if (process.status === 'RETIRED') {
+              <span class="badge">Retired</span>
+            } @else {
+              <span class="badge badge-ok">Published</span>
+            }
+          } @else {
+            <span class="badge badge-accent">Not published yet</span>
+          }
+          <!-- Always there, so the rows line up whether or not they can be retired. -->
+          <span class="w-16 text-right">
+            @if (process.status === 'PUBLISHED') {
+              <button type="button" [attr.data-testid]="'retire-' + process.key" class="btn btn-danger px-3 py-1 text-xs"
+                      (click)="retire(process)">Retire</button>
+            }
+          </span>
+        </li>
+      } @empty {
+        <li class="px-4 py-8 text-center text-sm text-muted">No processes yet. Start one above.</li>
+      }
+    </ul>
+  } @else {
+    <p class="mt-4 text-sm text-muted">Loading…</p>
+  }
+</section>

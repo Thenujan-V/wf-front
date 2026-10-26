@@ -1,0 +1,31 @@
+<div class="rounded-lg border border-dashed border-line-strong bg-surface p-3">
+  <label class="flex cursor-pointer items-center gap-2 text-sm">
+    <span class="btn btn-primary shrink-0 px-3 py-1.5">Upload files</span>
+    <span class="text-muted">
+      @if (instanceId()) { They are attached to this request. } @else { They are added to this folder as version 1.0. }
+    </span>
+    <input type="file" multiple data-testid="upload-input" class="sr-only" (change)="choose($any($event.target))" />
+  </label>
+  @if (entries().length) {
+    <ul class="mt-3 divide-y divide-line text-sm">
+      @for (e of entries(); track e.id) {
+        <li data-testid="upload-entry" class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+          <span class="min-w-0 flex-1 truncate font-medium">{{ e.file.name }}</span>
+          <span data-testid="upload-status" class="text-muted">{{ e.status }}</span>
+          @if (!e.done && !e.error) {
+            <span class="h-1.5 w-24 overflow-hidden rounded bg-field" aria-hidden="true">
+              <span class="block h-full bg-accent" [style.width.%]="e.percent"></span>
+            </span>
+          }
+          @if (e.error) {
+            <span data-testid="upload-error" class="w-full text-xs text-danger-text">{{ e.error }}</span>
+            <button type="button" data-testid="upload-retry" class="text-xs link" (click)="retry(e)">Try again</button>
+          }
+          @if (e.done || e.error) {
+            <button type="button" data-testid="upload-dismiss" class="text-xs text-muted link" (click)="dismiss(e.id)">Dismiss</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

@@ -1,0 +1,29 @@
+<div class="rounded-lg border border-line bg-field p-3">
+  @if (failed()) {
+    <p data-testid="preview-failed" class="text-sm text-muted">The preview is not available right now.</p>
+  } @else if (link(); as l) {
+    @switch (kind()) {
+      @case ('pdf') {
+        <app-pdf-viewer [url]="l.url" />
+      }
+      @case ('image') {
+        <img data-testid="preview-image" class="mx-auto max-h-[70vh] max-w-full" [src]="l.url" [alt]="l.fileName" />
+      }
+      @case ('text') {
+        @if (text() !== null) {
+          <pre data-testid="preview-text" class="max-h-[70vh] overflow-auto whitespace-pre-wrap text-xs">{{ text() }}</pre>
+          @if (truncated()) {
+            <p data-testid="preview-truncated" class="mt-2 text-xs text-muted">Showing the start of the file. Download it to read all of it.</p>
+          }
+        } @else {
+          <p class="text-sm text-muted">Loading…</p>
+        }
+      }
+      @default {
+        <p data-testid="preview-none" class="text-sm text-muted">No preview for this kind of file. Download it to open it.</p>
+      }
+    }
+  } @else {
+    <p class="text-sm text-muted">Loading preview…</p>
+  }
+</div>

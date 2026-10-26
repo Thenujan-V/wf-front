@@ -1,0 +1,165 @@
+<section class="mx-auto max-w-6xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Org chart</h1>
+  <p class="mt-1 text-sm text-muted">Who reports to whom. Processes use it to find a person's manager.</p>
+
+  <div class="mt-4 grid gap-6 md:grid-cols-[20rem_1fr]">
+    <div>
+      <form class="flex gap-2" (submit)="$event.preventDefault(); find()">
+        <input type="search" data-testid="people-search" aria-label="Find a person"
+               class="min-w-0 flex-1 rounded-md border border-line-strong px-3 py-1.5 text-sm" placeholder="Name, username or email"
+               [value]="search()" (input)="search.set($any($event.target).value)" />
+        <button type="submit" data-testid="people-search-go" class="btn btn-secondary px-3 py-1.5 text-sm">Find</button>
+      </form>
+
+      @switch (listState()) {
+        @case ('loading') {
+          <p class="mt-3 text-sm text-muted">Loading…</p>
+        }
+        @case ('failed') {
+          <p class="alert-error mt-3 p-3 text-sm">
+            People could not be loaded.
+            <button type="button" data-testid="retry-people" class="ml-2 link" (click)="loadPeople()">Retry</button>
+          </p>
+        }
+        @default {
+          @if (people(); as p) {
+            <ul class="card mt-3 divide-y divide-line text-sm">
+              @for (person of p.items; track person.id) {
+                <li>
+                  <button type="button" [attr.data-testid]="'person-' + person.id" class="block w-full px-3 py-2 text-left hover:bg-field"
+                          [class.bg-accent-soft]="selected()?.id === person.id" (click)="choose(person)">
+                    <span class="font-medium">{{ person.displayName || person.username }}</span>
+                    @if (!person.enabled) {
+                      <span class="ml-2 rounded bg-field px-1.5 py-0.5 text-xs">Disabled</span>
+                    }
+                    <span class="block text-xs text-muted">{{ person.position ?? 'No position' }} · {{ person.department ?? 'No department' }}</span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="px-3 py-6 text-center text-muted">No one found.</li>
+              }
+            </ul>
+            <div class="mt-2 flex items-center gap-2 text-sm">
+              <button type="button" data-testid="people-previous" class="btn btn-secondary px-2 py-1"
+                      [disabled]="page() === 0" (click)="go(-1)">Previous</button>
+              <span class="text-muted">Page {{ p.page + 1 }} of {{ pages() }}</span>
+              <button type="button" data-testid="people-next" class="btn btn-secondary px-2 py-1"
+                      [disabled]="page() >= pages() - 1" (click)="go(1)">Next</button>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    @if (selected(); as person) {
+      <div data-testid="detail" class="card p-5 text-sm">
+        <h2 class="text-lg font-medium">{{ person.displayName || person.username }}</h2>
+        <p class="text-muted">{{ person.username }}@if (!person.enabled) { · no longer active }</p>
+
+        @switch (detailState()) {
+          @case ('loading') {
+            <p class="mt-4 text-muted">Loading…</p>
+          }
+          @case ('failed') {
+            <p class="alert-error mt-4 p-3">
+              This person's place in the chart could not be loaded.
+              <button type="button" data-testid="retry-detail" class="ml-2 link" (click)="choose(person)">Retry</button>
+            </p>
+          }
+          @default {
+            <h3 class="mt-4 font-medium text-ink">Reports to</h3>
+            <div data-testid="chain" class="mt-1 flex flex-wrap items-center gap-1">
+              @for (above of chain(); track above.id) {
+                <button type="button" class="rounded bg-field px-2 py-0.5 link" (click)="choose(above)">{{ above.displayName || above.username }}</button>
+                <span aria-hidden="true">›</span>
+              } @empty {
+                <span class="text-muted">Nobody.</span>
+              }
+              @if (chain().length > 0) {
+                <span class="font-medium">{{ person.displayName || person.username }}</span>
+              }
+            </div>
+
+            @if (settingsState() === 'ready') {
+            @if (!anyEditable()) {
+              <p class="mt-4 rounded-md bg-field p-3 text-muted">
+                This instance takes manager, department and position from Keycloak. Nothing can be changed here.
+              </p>
+            }
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <span class="font-medium text-ink">Manager</span>
+                <p class="mt-1">
+                  <span data-testid="manager-name">{{ manager() ? (manager()!.displayName || manager()!.username) : 'No manager' }}</span>
+                  @if (editable().manager) {
+                    <button type="button" data-testid="change-manager" class="ml-3 link" (click)="picking.set(!picking())">Change</button>
+                    @if (manager()) {
+                      <button type="button" data-testid="clear-manager" class="ml-3 link" (click)="manager.set(null)">Remove</button>
+                    }
+                  } @else {
+                    <span class="ml-3 text-xs text-muted">Kept in Keycloak</span>
+                  }
+                </p>
+                @if (picking()) {
+                  <div class="mt-2"><app-user-picker [excludeId]="person.id" (picked)="pick($event)" /></div>
+                }
+              </div>
+              <label class="block">
+                <span class="font-medium text-ink">Department</span>
+                <input data-testid="department" class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 disabled:bg-field disabled:text-muted"
+                       maxlength="255" [disabled]="!editable().department" [value]="department()" (input)="department.set($any($event.target).value)" />
+                @if (!editable().department) {
+                  <span class="text-xs text-muted">Kept in Keycloak</span>
+                }
+              </label>
+              <label class="block">
+                <span class="font-medium text-ink">Position</span>
+                <input data-testid="position" class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 disabled:bg-field disabled:text-muted"
+                       maxlength="255" [disabled]="!editable().position" [value]="position()" (input)="position.set($any($event.target).value)" />
+                @if (!editable().position) {
+                  <span class="text-xs text-muted">Kept in Keycloak</span>
+                }
+              </label>
+            </div>
+            @if (anyEditable()) {
+              <div class="mt-4 text-right">
+                <button type="button" data-testid="save" [disabled]="!dirty() || saving()" (click)="save()"
+                        class="btn btn-primary px-4 py-2">
+                  {{ saving() ? 'Saving…' : 'Save' }}
+                </button>
+              </div>
+            }
+            } @else if (settingsState() === 'failed') {
+              <p class="alert-error mt-4 p-3">
+                What can be changed here could not be loaded.
+                <button type="button" data-testid="retry-settings" class="ml-2 link" (click)="loadSettings()">Retry</button>
+              </p>
+            } @else {
+              <p class="mt-4 text-muted">Loading…</p>
+            }
+
+            <h3 class="mt-6 font-medium text-ink">Reports to {{ person.displayName || person.username }}</h3>
+            <ul data-testid="reports" class="mt-1 divide-y divide-line rounded-md border border-line">
+              @for (report of reports(); track report.id) {
+                <li>
+                  <button type="button" class="block w-full px-3 py-2 text-left hover:bg-field" (click)="choose(report)">
+                    <span class="link">{{ report.displayName || report.username }}</span>
+                    <span class="text-muted"> · {{ report.position ?? 'No position' }}@if (!report.enabled) { · disabled }</span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="px-3 py-2 text-muted">Nobody reports to {{ person.displayName || person.username }}.</li>
+              }
+            </ul>
+            @if (reportsTotal() > reports().length) {
+              <p data-testid="reports-cut" class="mt-1 text-xs text-muted">Showing {{ reports().length }} of {{ reportsTotal() }}.</p>
+            }
+          }
+        }
+      </div>
+    } @else {
+      <p class="rounded-lg border border-dashed border-line-strong p-8 text-center text-sm text-muted">Choose a person to see their place in the chart.</p>
+    }
+  </div>
+</section>

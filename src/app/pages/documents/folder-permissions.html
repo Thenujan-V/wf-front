@@ -1,0 +1,103 @@
+<section class="mx-auto max-w-4xl">
+  @switch (state()) {
+    @case ('loading') {
+      <p class="text-sm text-muted">Loading…</p>
+    }
+    @case ('missing') {
+      <div data-testid="missing" class="card p-6 text-sm">
+        This folder does not exist or you do not have access to it. <a routerLink="/documents" class="ml-2 link">Go to the library</a>
+      </div>
+    }
+    @case ('forbidden') {
+      <div data-testid="forbidden" class="card p-6 text-sm">
+        Only managers of this folder can see and change who has access.
+        <a [routerLink]="['/documents/folders', id()]" class="ml-2 link">Back to the folder</a>
+      </div>
+    }
+    @case ('failed') {
+      <div class="alert-error p-4 text-sm">
+        The permissions could not be loaded. <button type="button" class="ml-2 link" (click)="load(id())">Retry</button>
+      </div>
+    }
+    @default {
+      @if (folder(); as f) {
+        <a class="text-sm text-muted hover:underline" [routerLink]="['/documents/folders', f.id]">← {{ f.name }}</a>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight">Who has access to "{{ f.name }}"</h1>
+        <p class="mt-1 text-sm text-muted">
+          Read lets people open documents; write adds and changes them; delete removes them; manage also changes these permissions.
+        </p>
+
+        @if (f.parentId) {
+          <label class="mt-4 flex items-center gap-2 text-sm">
+            <input type="checkbox" data-testid="inherit" [checked]="inheritAcl()" (change)="inheritAcl.set($any($event.target).checked)" />
+            Also give access to everyone who has access to the parent folder
+          </label>
+        }
+
+        <div class="card mt-4">
+          <ul class="divide-y divide-line text-sm">
+            @for (r of rows(); track r.principalType + ':' + r.principalId; let i = $index) {
+              <li data-testid="acl-row" class="flex items-center gap-3 px-3 py-2">
+                <span class="min-w-0 flex-1 truncate">{{ label(r) }}</span>
+                <select data-testid="acl-permission" [attr.aria-label]="'Permission of ' + label(r)"
+                        class="rounded border border-line-strong px-2 py-1" (change)="setPermission(i, $any($event.target).value)">
+                  @for (p of permissions; track p) {
+                    <option [value]="p" [selected]="p === r.permission">{{ p }}</option>
+                  }
+                </select>
+                <button type="button" data-testid="acl-remove" class="text-xs text-muted hover:text-danger-text" (click)="remove(i)">Remove</button>
+              </li>
+            } @empty {
+              <li class="px-3 py-4 text-center text-muted">No entries of its own.</li>
+            }
+          </ul>
+          <div class="flex flex-wrap items-start gap-3 border-t border-line p-3 text-sm">
+            <button type="button" data-testid="add-person" class="link" (click)="adding.set('USER')">Add a person</button>
+            <button type="button" data-testid="add-group" class="link" (click)="adding.set('GROUP')">Add a group</button>
+            <button type="button" data-testid="add-role" class="link" (click)="adding.set('ROLE')">Add a role</button>
+          </div>
+          @switch (adding()) {
+            @case ('USER') {
+              <div class="border-t border-line p-3"><app-user-picker (picked)="addUser($event)" /></div>
+            }
+            @case ('GROUP') {
+              <div class="border-t border-line p-3">
+                <select data-testid="add-group-select" aria-label="Group" class="rounded border border-line-strong px-2 py-1 text-sm"
+                        (change)="addGroup($any($event.target).value)">
+                  <option value="" selected>Choose a group</option>
+                  @for (g of groups(); track g.id) { <option [value]="g.id">{{ g.path }}</option> }
+                </select>
+              </div>
+            }
+            @case ('ROLE') {
+              <div class="border-t border-line p-3">
+                <select data-testid="add-role-select" aria-label="Role" class="rounded border border-line-strong px-2 py-1 text-sm"
+                        (change)="addRole($any($event.target).value)">
+                  <option value="" selected>Choose a role</option>
+                  @for (role of roles; track role) { <option [value]="role">{{ role }}</option> }
+                </select>
+              </div>
+            }
+          }
+        </div>
+
+        @if (inheritAcl() && inherited().length) {
+          <div class="mt-4">
+            <h2 class="text-sm font-semibold">From the parent folders</h2>
+            <ul class="mt-1 divide-y divide-line rounded-lg border border-line bg-field text-sm">
+              @for (r of inherited(); track $index) {
+                <li data-testid="inherited-row" class="flex gap-3 px-3 py-2">
+                  <span class="flex-1">{{ label(r) }}</span><span class="text-muted">{{ r.permission }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        <button type="button" data-testid="save-acl" [disabled]="saving()"
+                class="btn btn-primary mt-4 px-4 py-1.5 text-sm" (click)="save()">
+          {{ saving() ? 'Saving…' : 'Save permissions' }}</button>
+      }
+    }
+  }
+</section>

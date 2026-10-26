@@ -1,0 +1,48 @@
+<button type="button" data-testid="bell"
+        class="icon-button"
+        [attr.aria-label]="label()" aria-haspopup="true" [attr.aria-expanded]="open()" (click)="toggle()">
+  <app-icon name="bell" />
+  @if (center.unread() > 0) {
+    <span data-testid="bell-badge"
+          class="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-danger px-1 text-center text-xs font-semibold leading-5 text-on-solid">{{ badge() }}</span>
+  }
+</button>
+
+@if (open()) {
+  <div data-testid="bell-panel"
+       class="card absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] shadow-lg">
+    <div class="flex items-center justify-between border-b border-line px-4 py-2">
+      <h2 class="text-sm font-semibold">Notifications</h2>
+      @if (center.unread() > 0) {
+        <button type="button" data-testid="bell-read-all" class="text-xs link" (click)="center.markAllRead()">Mark all as read</button>
+      }
+    </div>
+    @switch (center.recentState()) {
+      @case ('failed') {
+        <p class="px-4 py-6 text-sm text-danger-text">Your notifications could not be loaded.</p>
+      }
+      @case ('ready') {
+        <ul class="max-h-96 divide-y divide-line overflow-y-auto">
+          @for (n of center.recent(); track n.id) {
+            <li>
+              <button type="button" data-testid="bell-item" class="block w-full px-4 py-3 text-left hover:bg-field"
+                      [class.bg-accent-soft]="!n.readAt" (click)="choose(n)">
+                <span class="block text-sm" [class.font-semibold]="!n.readAt">{{ n.title }}</span>
+                <span class="mt-0.5 block text-xs text-muted">{{ n.body }}</span>
+                <span class="mt-0.5 block text-xs text-muted">{{ n.createdAt | date: 'medium' }}</span>
+              </button>
+            </li>
+          } @empty {
+            <li class="px-4 py-6 text-sm text-muted">You have no notifications.</li>
+          }
+        </ul>
+      }
+      @default {
+        <p class="px-4 py-6 text-sm text-muted">Loading…</p>
+      }
+    }
+    <div class="border-t border-line px-4 py-2 text-right">
+      <a routerLink="/notifications" data-testid="bell-see-all" class="text-xs link" (click)="open.set(false)">See all</a>
+    </div>
+  </div>
+}

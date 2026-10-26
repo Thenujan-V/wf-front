@@ -1,0 +1,55 @@
+<div class="card mt-6 p-6">
+  <h2 class="text-lg font-medium">Notifications</h2>
+  <p class="mt-1 text-sm text-muted">Choose what you are told about, in the app and by email.</p>
+
+  @switch (state()) {
+    @case ('loading') {
+      <p class="mt-4 text-sm text-muted">Loading…</p>
+    }
+    @case ('failed') {
+      <p class="alert-error mt-4 p-4 text-sm">
+        Your notification settings could not be loaded.
+        <button type="button" data-testid="retry-preferences" class="ml-2 link" (click)="load()">Retry</button>
+      </p>
+    }
+    @default {
+      <table class="mt-4 w-full text-sm">
+        <thead>
+          <tr class="text-left text-muted">
+            <th scope="col" class="py-2 font-medium">Tell me when</th>
+            <th scope="col" class="w-24 py-2 text-center font-medium">In the app</th>
+            <th scope="col" class="w-24 py-2 text-center font-medium">By email</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          @for (row of rows(); track row.kind) {
+            <tr>
+              <th scope="row" class="py-2 text-left font-normal">
+                <span class="font-medium">{{ label(row.kind).label }}</span>
+                @if (label(row.kind).hint; as hint) {
+                  <span class="block text-xs text-muted">{{ hint }}</span>
+                }
+              </th>
+              <td class="py-2 text-center">
+                <input type="checkbox" [attr.data-testid]="'pref-' + row.kind + '-inApp'" class="h-4 w-4"
+                       [attr.aria-label]="label(row.kind).label + ': in the app'" [checked]="row.inApp"
+                       (change)="choose(row.kind, 'inApp', $any($event.target).checked)" />
+              </td>
+              <td class="py-2 text-center">
+                <input type="checkbox" [attr.data-testid]="'pref-' + row.kind + '-email'" class="h-4 w-4"
+                       [attr.aria-label]="label(row.kind).label + ': by email'" [checked]="row.email"
+                       (change)="choose(row.kind, 'email', $any($event.target).checked)" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="mt-4 text-right">
+        <button type="button" data-testid="save-preferences" [disabled]="!dirty() || saving()" (click)="save()"
+                class="btn btn-primary px-4 py-2 text-sm">
+          {{ saving() ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    }
+  }
+</div>

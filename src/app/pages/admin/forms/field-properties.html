@@ -1,0 +1,163 @@
+<div class="space-y-4 text-sm">
+  <div>
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ typeLabel(type()) }}</p>
+  </div>
+
+  <label class="block">
+    <span class="font-medium text-ink">Key</span>
+    <input data-testid="prop-key" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1 font-mono"
+           [value]="keyDraft()" (input)="keyDraft.set($any($event.target).value)" (change)="commitKey()" />
+    @if (keyError(); as error) {
+      <span class="mt-1 block text-xs text-danger-text">{{ error }}</span>
+    } @else {
+      <span class="mt-1 block text-xs text-muted">Used in rules and in the stored data, e.g. form.{{ keyDraft() }}.</span>
+    }
+  </label>
+
+  <label class="block">
+    <span class="font-medium text-ink">{{ type() === 'display' ? 'Text' : 'Label' }}</span>
+    @if (type() === 'display') {
+      <textarea data-testid="prop-label" rows="3" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+                [value]="field().label" (input)="setText('label', $any($event.target).value)"></textarea>
+    } @else {
+      <input data-testid="prop-label" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+             [value]="field().label" (input)="setText('label', $any($event.target).value)" />
+    }
+  </label>
+
+  @if (isInput()) {
+    <label class="block">
+      <span class="font-medium text-ink">Help text</span>
+      <input data-testid="prop-help" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+             [value]="field().help ?? ''" (input)="setText('help', $any($event.target).value)" />
+    </label>
+  }
+
+  <label class="block">
+    <span class="font-medium text-ink">Section</span>
+    <select data-testid="prop-section" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+            (change)="setSection($any($event.target).value)">
+      <option value="" [selected]="!field().section">No section</option>
+      @for (s of sections(); track s.id) {
+        <option [value]="s.id" [selected]="s.id === field().section">{{ s.title }}</option>
+      }
+    </select>
+  </label>
+
+  @if (sectionColumns() > 1) {
+    <label class="block">
+      <span class="font-medium text-ink">Width</span>
+      <select data-testid="prop-span" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+              (change)="set('span', +$any($event.target).value)">
+        @for (n of widths(); track n) {
+          <option [value]="n" [selected]="n === width()">{{ widthLabel(n) }}</option>
+        }
+      </select>
+    </label>
+  }
+
+  @if (isInput()) {
+    <label class="flex items-center gap-2">
+      <input data-testid="prop-required" type="checkbox" [checked]="!!field().required"
+             (change)="set('required', $any($event.target).checked || undefined)" />
+      <span class="font-medium text-ink">Required</span>
+    </label>
+  }
+
+  @if (numeric(type())) {
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block"><span class="font-medium text-ink">Minimum</span>
+        <input data-testid="prop-min" type="number" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+               [value]="field().min ?? ''" (input)="setNumber('min', $any($event.target).value)" /></label>
+      <label class="block"><span class="font-medium text-ink">Maximum</span>
+        <input data-testid="prop-max" type="number" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+               [value]="field().max ?? ''" (input)="setNumber('max', $any($event.target).value)" /></label>
+    </div>
+  }
+
+  @if (type() === 'text' || type() === 'textarea') {
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block"><span class="font-medium text-ink">Min length</span>
+        <input data-testid="prop-min-length" type="number" min="0" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+               [value]="field().minLength ?? ''" (input)="setNumber('minLength', $any($event.target).value)" /></label>
+      <label class="block"><span class="font-medium text-ink">Max length</span>
+        <input data-testid="prop-max-length" type="number" min="0" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+               [value]="field().maxLength ?? ''" (input)="setNumber('maxLength', $any($event.target).value)" /></label>
+    </div>
+    <label class="block">
+      <span class="font-medium text-ink">Pattern</span>
+      <input data-testid="prop-pattern" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1 font-mono"
+             placeholder="e.g. [A-Z]{2}-\d{3}" [value]="field().pattern ?? ''" (input)="setText('pattern', $any($event.target).value)" />
+      <span class="mt-1 block text-xs text-muted">The whole value must match. A field with a pattern needs a maximum length (at most 1000).</span>
+    </label>
+  }
+
+  @if (type() === 'select' || type() === 'radio' || type() === 'checkbox') {
+    <div>
+      <p class="font-medium text-ink">Options</p>
+      @if (type() === 'checkbox') {
+        <p class="text-xs text-muted">Leave empty for a single tick box.</p>
+      }
+      @for (option of options(); track $index; let i = $index) {
+        <div class="mt-1 flex gap-1">
+          <input [attr.data-testid]="'option-value-' + i" aria-label="Stored value" class="w-28 rounded border border-line-strong px-2 py-1 font-mono"
+                 [value]="option.value" (input)="setOption(i, 'value', $any($event.target).value)" />
+          <input [attr.data-testid]="'option-label-' + i" aria-label="Shown as" class="min-w-0 flex-1 rounded border border-line-strong px-2 py-1"
+                 [value]="option.label" (input)="setOption(i, 'label', $any($event.target).value)" />
+          <button type="button" class="px-1 text-muted hover:text-ink" aria-label="Remove option" (click)="removeOption(i)">✕</button>
+        </div>
+      }
+      <button type="button" data-testid="option-add" class="mt-1 text-xs link" (click)="addOption()">Add an option</button>
+    </div>
+  }
+
+  @if (type() === 'table') {
+    <div>
+      <p class="font-medium text-ink">Columns</p>
+      @for (column of columns(); track $index; let i = $index) {
+        <div class="mt-1 grid grid-cols-[1fr_1fr_auto] gap-1">
+          <input [attr.data-testid]="'column-key-' + i" aria-label="Column key" class="rounded border border-line-strong px-2 py-1 font-mono"
+                 [value]="column.key" (change)="setColumn(i, { key: $any($event.target).value })" />
+          <input [attr.data-testid]="'column-label-' + i" aria-label="Column label" class="rounded border border-line-strong px-2 py-1"
+                 [value]="column.label" (input)="setColumn(i, { label: $any($event.target).value })" />
+          <button type="button" class="px-1 text-muted hover:text-ink" aria-label="Remove column" (click)="removeColumn(i)">✕</button>
+          <select [attr.data-testid]="'column-type-' + i" aria-label="Column type" class="rounded border border-line-strong px-2 py-1"
+                  (change)="setColumn(i, { type: $any($event.target).value })">
+            @for (t of columnTypes; track t) {
+              <option [value]="t" [selected]="t === column.type">{{ typeLabel(t) }}</option>
+            }
+          </select>
+          <label class="flex items-center gap-1 text-xs">
+            <input type="checkbox" [checked]="!!column.required" (change)="setColumn(i, { required: $any($event.target).checked || undefined })" />
+            Required
+          </label>
+          @if (numeric(column.type)) {
+            <label class="flex items-center gap-1 text-xs">
+              <input [attr.data-testid]="'column-total-' + i" type="checkbox" [checked]="totalled(column.key)"
+                     (change)="toggleTotal(column.key, $any($event.target).checked)" />
+              Total
+            </label>
+          } @else {
+            <span></span>
+          }
+        </div>
+      }
+      <button type="button" data-testid="column-add" class="mt-1 text-xs link" (click)="addColumn()">Add a column</button>
+      <div class="mt-2 grid grid-cols-2 gap-2">
+        <label class="block"><span class="font-medium text-ink">Min rows</span>
+          <input data-testid="prop-min-rows" type="number" min="0" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+                 [value]="field().minRows ?? ''" (input)="setNumber('minRows', $any($event.target).value)" /></label>
+        <label class="block"><span class="font-medium text-ink">Max rows</span>
+          <input data-testid="prop-max-rows" type="number" min="0" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1"
+                 [value]="field().maxRows ?? ''" (input)="setNumber('maxRows', $any($event.target).value)" /></label>
+      </div>
+    </div>
+  }
+
+  <app-condition-editor label="Show this field only when" testId="visible" [fields]="earlier()"
+                        [condition]="field().visibleWhen" (conditionChange)="set('visibleWhen', $event)" />
+  @if (isInput()) {
+    <app-condition-editor label="Required only when" testId="required" [fields]="earlier()"
+                          [condition]="field().requiredWhen" (conditionChange)="set('requiredWhen', $event)" />
+  }
+</div>

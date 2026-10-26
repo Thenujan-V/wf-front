@@ -1,0 +1,62 @@
+<section class="mx-auto max-w-5xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Search documents</h1>
+  <form class="mt-3 flex flex-wrap gap-2" (submit)="$event.preventDefault(); submit()">
+    <input type="search" data-testid="search-query" aria-label="Search" placeholder="Words from the name, details or text"
+           class="min-w-56 flex-1 rounded-md border border-line-strong px-3 py-1.5 text-sm"
+           [value]="query()" (input)="query.set($any($event.target).value)" />
+    <select data-testid="search-type" aria-label="Document type" class="rounded-md border border-line-strong px-2 py-1.5 text-sm"
+            (change)="type.set($any($event.target).value)">
+      <option value="" [selected]="!type()">Any type</option>
+      @for (t of types(); track t.id) {
+        <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+      }
+    </select>
+    <button type="submit" data-testid="search-go" class="btn btn-primary px-4 py-1.5 text-sm">Search</button>
+  </form>
+  @if (folderId()) {
+    <p class="mt-2 text-xs text-muted">
+      Searching one folder and its subfolders.
+      <button type="button" data-testid="clear-folder" class="link" (click)="clearFolder()">Search the whole library</button>
+    </p>
+  }
+
+  @switch (state()) {
+    @case ('idle') {
+      <p class="mt-6 text-sm text-muted">Search the names, details and contents of the documents you can open.</p>
+    }
+    @case ('loading') {
+      <p class="mt-6 text-sm text-muted">Searching…</p>
+    }
+    @case ('invalid') {
+      <p data-testid="search-invalid" class="mt-6 text-sm text-warn-text">{{ invalidMessage() }}</p>
+    }
+    @case ('failed') {
+      <p class="mt-6 text-sm text-danger-text">The search could not be run. Please try again.</p>
+    }
+    @case ('ready') {
+      @if (results(); as r) {
+        <p data-testid="result-total" class="mt-4 text-sm text-muted">{{ r.total }} {{ r.total === 1 ? 'document' : 'documents' }}</p>
+        <ul class="card mt-2 divide-y divide-line">
+          @for (h of r.items; track h.document.id) {
+            <li data-testid="result" class="flex flex-wrap items-baseline gap-x-3 px-4 py-2 text-sm">
+              <a class="font-medium hover:underline" [routerLink]="['/documents', h.document.id]">{{ h.document.name }}</a>
+              <a class="text-xs text-muted hover:underline" [routerLink]="['/documents/folders', h.document.folderId]">{{ h.folderName }}</a>
+              <span class="ml-auto text-xs text-muted">{{ h.document.updatedAt | date: 'mediumDate' }}</span>
+            </li>
+          } @empty {
+            <li class="px-4 py-8 text-center text-sm text-muted">Nothing matched.</li>
+          }
+        </ul>
+        @if (lastPage() > 0) {
+          <div class="mt-3 flex items-center gap-3 text-sm">
+            <button type="button" data-testid="page-prev" class="link disabled:opacity-40" [disabled]="pageNumber() === 0"
+                    (click)="goTo(pageNumber() - 1)">Previous</button>
+            <span>Page {{ pageNumber() + 1 }} of {{ lastPage() + 1 }}</span>
+            <button type="button" data-testid="page-next" class="link disabled:opacity-40" [disabled]="pageNumber() >= lastPage()"
+                    (click)="goTo(pageNumber() + 1)">Next</button>
+          </div>
+        }
+      }
+    }
+  }
+</section>

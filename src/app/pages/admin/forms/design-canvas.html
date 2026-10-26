@@ -1,0 +1,77 @@
+<div class="space-y-4">
+  @for (section of sections(); track section.id) {
+    <div class="card p-3" data-testid="canvas-section"
+         [class.border-accent]="section.real && sections().length > 1 && targetSection() === section.id">
+      <div class="flex flex-wrap items-center gap-2">
+        @if (section.real) {
+          <input class="min-w-0 flex-1 rounded border border-transparent px-1 font-semibold hover:border-line-strong" aria-label="Section title"
+                 [value]="section.title" (change)="sectionRename.emit({ id: section.id, title: $any($event.target).value })" />
+          <select class="rounded border border-line-strong px-1 py-0.5 text-xs" aria-label="Columns"
+                  (change)="sectionColumns.emit({ id: section.id, columns: +$any($event.target).value })">
+            @for (n of columnChoices; track n) {
+              <option [value]="n" [selected]="n === section.columns">{{ n }} column{{ n > 1 ? 's' : '' }}</option>
+            }
+          </select>
+          @if (sections().length > 1) {
+            @if (targetSection() === section.id) {
+              <span class="badge badge-accent">New fields go here</span>
+            } @else {
+              <button type="button" class="text-xs link" [attr.data-testid]="'pick-' + section.id"
+                      (click)="sectionPick.emit(section.id)">Add fields here</button>
+            }
+          }
+          <button type="button" class="text-xs text-muted hover:text-ink" data-testid="remove-section"
+                  (click)="sectionRemove.emit(section.id)">Remove section</button>
+        } @else {
+          <p class="font-semibold text-muted">Not in a section</p>
+        }
+      </div>
+
+      <div class="mt-3" [class]="gridClass(section.columns)" data-testid="canvas-grid"
+           cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="section.id"
+           (cdkDropListDropped)="dropped($event, section.id)">
+        @for (field of section.fields; track field.key) {
+          <div data-testid="canvas-field" class="group relative rounded-md border bg-surface p-2"
+               cdkDrag [cdkDragData]="{ key: field.key }"
+               [class]="spanClass(field, section.columns)"
+               [class.border-accent]="selected() === field.key" [class.border-line]="selected() !== field.key">
+            <div inert aria-hidden="true">
+              <app-form-field [field]="field" [design]="true" />
+            </div>
+            <button type="button" class="absolute inset-0 rounded-md" [attr.data-testid]="'select-' + field.key"
+                    [attr.aria-label]="(field.label || '(no label)') + ', ' + typeLabel(field.type)" [title]="field.key"
+                    [attr.aria-pressed]="selected() === field.key" (click)="fieldSelect.emit(field.key)"></button>
+            @if (field.visibleWhen || field.requiredWhen || ruleIssue(field.key) || problemCount(field.key)) {
+              <p class="relative mt-1 flex flex-wrap gap-1 text-xs">
+                @if (field.visibleWhen || field.requiredWhen) { <span class="text-muted">has a rule</span> }
+                @if (ruleIssue(field.key); as issue) { <span class="rounded bg-warn-soft px-1 text-warn-text" [title]="issue">rule needs fixing</span> }
+                @if (problemCount(field.key); as n) { <span class="rounded bg-danger-soft px-1 text-danger-text">{{ n }} problem{{ n > 1 ? 's' : '' }}</span> }
+              </p>
+            }
+            <div class="absolute right-1 top-1 flex items-center rounded border border-line bg-surface text-sm group-focus-within:opacity-100 group-hover:opacity-100"
+                 [class.opacity-0]="selected() !== field.key">
+              <span cdkDragHandle data-testid="drag-handle" aria-hidden="true" title="Drag to move"
+                    class="cursor-grab px-1 text-muted hover:text-ink">⠿</span>
+              <button type="button" class="px-1 text-muted hover:text-ink" [attr.aria-label]="'Move ' + (field.label || field.key) + ' up'"
+                      (click)="fieldMove.emit({ key: field.key, direction: -1 })">↑</button>
+              <button type="button" class="px-1 text-muted hover:text-ink" [attr.aria-label]="'Move ' + (field.label || field.key) + ' down'"
+                      (click)="fieldMove.emit({ key: field.key, direction: 1 })">↓</button>
+              <button type="button" class="px-1 text-muted hover:text-danger-text" [attr.data-testid]="'delete-' + field.key"
+                      [attr.aria-label]="'Delete ' + (field.label || field.key)" (click)="fieldRemove.emit(field.key)">✕</button>
+            </div>
+            @if (section.real && section.columns > 1 && selected() === field.key) {
+              <span data-testid="resize-handle" aria-hidden="true" title="Drag to change the width"
+                    class="absolute -right-1 top-1/2 hidden h-8 w-2 -translate-y-1/2 cursor-ew-resize rounded bg-accent md:block"
+                    (pointerdown)="startResize($event, field, section.columns)"></span>
+            }
+          </div>
+        } @empty {
+          <p class="col-span-full rounded-md border border-dashed border-line-strong px-2 py-6 text-center text-xs text-muted">
+            Drag a field here, or pick one from the palette.
+          </p>
+        }
+      </div>
+    </div>
+  }
+  <button type="button" data-testid="add-section" class="text-sm link" (click)="sectionAdd.emit()">Add a section</button>
+</div>

@@ -1,0 +1,179 @@
+@let f = field();
+@let id = 'f-' + f.key;
+@switch (f.type) {
+  @case ('heading') {
+    <h3 class="text-base font-semibold text-ink">{{ f.label }}</h3>
+  }
+  @case ('display') {
+    <p class="whitespace-pre-line text-sm text-muted">{{ f.label }}</p>
+  }
+  @default {
+    <label class="block text-sm font-medium text-ink" [attr.for]="id">
+      {{ f.label }}@if (f.required && !readOnly()) { <span class="text-danger-text">*</span> }
+    </label>
+    @switch (f.type) {
+      @case ('textarea') {
+        <textarea [id]="id" rows="3" [disabled]="locked()" [attr.maxlength]="f.maxLength ?? null"
+                  class="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm disabled:bg-field"
+                  [value]="text(current())" (input)="setText($event)"></textarea>
+      }
+      @case ('number') {
+        <input [id]="id" type="number" step="any" [disabled]="locked()"
+               class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+               [value]="text(current())" (input)="setNumber($event)" />
+      }
+      @case ('currency') {
+        <input [id]="id" type="number" step="0.01" inputmode="decimal" [disabled]="locked()"
+               class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+               [value]="text(current())" (input)="setNumber($event)" />
+      }
+      @case ('date') {
+        <input [id]="id" type="date" [disabled]="locked()"
+               class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+               [value]="text(current())" (input)="setText($event)" />
+      }
+      @case ('datetime') {
+        <input [id]="id" type="datetime-local" [disabled]="locked()"
+               class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+               [value]="localDateTime()" (input)="setDateTime($event)" />
+      }
+      @case ('select') {
+        <select [id]="id" [disabled]="locked()"
+                class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+                (change)="setText($event)">
+          <option value="" [selected]="!current()">Choose…</option>
+          @for (option of f.options ?? []; track option.value) {
+            <option [value]="option.value" [selected]="current() === option.value">{{ option.label }}</option>
+          }
+        </select>
+      }
+      @case ('radio') {
+        <div [id]="id" class="mt-1 flex flex-wrap gap-4 text-sm" role="radiogroup">
+          @for (option of f.options ?? []; track option.value) {
+            <label class="flex items-center gap-2">
+              <input type="radio" [name]="'r-' + f.key" [value]="option.value" [disabled]="locked()"
+                     [checked]="current() === option.value" (change)="emit(option.value)" />
+              {{ option.label }}
+            </label>
+          }
+        </div>
+      }
+      @case ('checkbox') {
+        @if (f.options?.length) {
+          <div [id]="id" class="mt-1 flex flex-wrap gap-4 text-sm">
+            @for (option of f.options; track option.value) {
+              <label class="flex items-center gap-2">
+                <input type="checkbox" [disabled]="locked()" [checked]="checked(option.value)"
+                       (change)="toggle(option.value, $event)" />
+                {{ option.label }}
+              </label>
+            }
+          </div>
+        } @else {
+          <input [id]="id" type="checkbox" class="mt-2" [disabled]="locked()"
+                 [checked]="current() === true" (change)="emit($any($event.target).checked)" />
+        }
+      }
+      @case ('user') {
+        @if (design()) {
+          <input [id]="id" type="text" disabled placeholder="Search for a person…"
+                 class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field" />
+        } @else {
+          <div [id]="id" class="mt-1 space-y-2 text-sm">
+            @if (current()) {
+              <p class="font-medium"><app-user-name [userId]="$any(current())" /></p>
+            }
+            @if (!readOnly()) {
+              <app-user-picker (picked)="pickUser($event)" />
+            }
+          </div>
+        }
+      }
+      @case ('file') {
+        @if (design()) {
+          <p [id]="id" class="mt-1 text-sm"><span class="btn btn-secondary px-3 py-1.5">Add files</span></p>
+        } @else {
+          <app-file-field [fieldId]="id" [files]="fileRefs()" [readOnly]="readOnly()"
+                          (changed)="emit($event)" (busy)="busy.emit($event)" />
+        }
+      }
+      @case ('table') {
+        <div [id]="id" class="mt-1 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-muted">
+                @for (column of f.columns ?? []; track column.key) {
+                  <th class="px-2 py-1 font-medium">{{ column.label }}</th>
+                }
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track $index; let i = $index) {
+                <tr>
+                  @for (column of f.columns ?? []; track column.key) {
+                    <td class="px-2 py-1 align-top">
+                      @if (column.type === 'select') {
+                        <select [id]="id + '-' + i + '-' + column.key" [disabled]="locked()"
+                                class="w-full rounded border border-line-strong px-2 py-1" (change)="setCell(i, column, $event)">
+                          <option value="" [selected]="!row[column.key]">Choose…</option>
+                          @for (option of column.options ?? []; track option.value) {
+                            <option [value]="option.value" [selected]="row[column.key] === option.value">{{ option.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <input [id]="id + '-' + i + '-' + column.key" [disabled]="locked()"
+                               [type]="column.type === 'date' ? 'date' : column.type === 'text' ? 'text' : 'number'"
+                               [attr.step]="column.type === 'currency' ? '0.01' : column.type === 'number' ? 'any' : null"
+                               class="w-full rounded border border-line-strong px-2 py-1"
+                               [value]="text(row[column.key])" (input)="setCell(i, column, $event)" />
+                      }
+                      @if (errorFor(f.key + '[' + i + '].' + column.key); as message) {
+                        <p class="mt-0.5 text-xs text-danger-text">{{ message }}</p>
+                      }
+                    </td>
+                  }
+                  <td class="px-2 py-1">
+                    @if (!locked()) {
+                      <button type="button" class="text-muted hover:text-ink" aria-label="Remove row"
+                              (click)="removeRow(i)">✕</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+            @if (f.totals?.length) {
+              <tfoot>
+                <tr class="border-t border-line font-medium">
+                  @for (column of f.columns ?? []; track column.key) {
+                    <td class="px-2 py-1">
+                      @if (f.totals!.includes(column.key)) {
+                        <span [attr.data-testid]="'total-' + f.key + '-' + column.key">{{ total(column.key) | number: '1.0-2' }}</span>
+                      }
+                    </td>
+                  }
+                  <td></td>
+                </tr>
+              </tfoot>
+            }
+          </table>
+          @if (canAddRow()) {
+            <button type="button" [attr.data-testid]="'add-row-' + f.key"
+                    class="mt-2 text-sm link" (click)="addRow()">Add a row</button>
+          }
+        </div>
+      }
+      @default {
+        <input [id]="id" type="text" [disabled]="locked()" [attr.maxlength]="f.maxLength ?? null"
+               class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm disabled:bg-field"
+               [value]="text(current())" (input)="setText($event)" />
+      }
+    }
+    @if (f.help) {
+      <p class="mt-1 text-xs text-muted">{{ f.help }}</p>
+    }
+    @if (errorFor(f.key); as message) {
+      <p [id]="'e-' + f.key" class="mt-1 text-xs text-danger-text" role="alert">{{ message }}</p>
+    }
+  }
+}

@@ -1,0 +1,147 @@
+<div class="space-y-4" data-testid="node-properties">
+  <div class="flex items-start justify-between gap-2">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ typeLabel() }}</p>
+      <p class="font-mono text-xs text-muted">{{ node().id }}</p>
+    </div>
+    <button type="button" data-testid="prop-delete" class="text-xs text-muted hover:text-danger-text" (click)="remove.emit()">Delete step</button>
+  </div>
+
+  <label class="block">
+    <span class="text-xs font-medium text-muted">Name</span>
+    <input data-testid="prop-name" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+           [value]="node().name" (input)="patch.emit({ name: $any($event.target).value })" />
+  </label>
+
+  @switch (node().type) {
+    @case ('START') {
+      <fieldset class="space-y-2">
+        <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Request form</legend>
+        <app-form-settings [formRef]="node().form" (formRefChange)="setForm($event)" />
+      </fieldset>
+    }
+    @case ('END') {
+      <label class="block">
+        <span class="text-xs font-medium text-muted">Result of the request</span>
+        <input data-testid="prop-end-status" list="end-statuses" placeholder="e.g. APPROVED"
+               class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+               [value]="node().endStatus ?? ''" (change)="setEndStatus($any($event.target).value)" />
+        <datalist id="end-statuses">
+          @for (s of endStatuses; track s) { <option [value]="s"></option> }
+        </datalist>
+      </label>
+    }
+    @case ('USER_TASK') {
+      <app-task-properties [node]="node()" [userVariables]="userVariables()" (patch)="patch.emit($event)"
+                           (outcomeAdd)="outcomeAdd.emit($event)" (outcomeRename)="outcomeRename.emit($event)"
+                           (outcomeRemove)="outcomeRemove.emit($event)" />
+      <fieldset class="space-y-2">
+        <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Task form</legend>
+        <app-form-settings [formRef]="node().form" [withAccess]="true" (formRefChange)="setForm($event)" />
+      </fieldset>
+    }
+    @case ('EXCLUSIVE_GATEWAY') {
+      <p class="text-sm text-muted">Give each flow leaving this decision a condition. The default flow is taken when no condition holds.</p>
+      <ng-container *ngTemplateOutlet="flowsOut; context: { empty: 'Connect this decision to the next steps, then set a condition on each flow.', pending: 'no condition yet' }" />
+    }
+    @case ('PARALLEL_GATEWAY') {
+      <p class="text-sm text-muted">With several flows out, it starts them all at once. With several flows in, it waits for all of them. Every split needs a matching join.</p>
+      <p data-testid="prop-parallel-role" class="text-sm">
+        @if (outgoing().length > 1) {
+          Split: starts {{ outgoing().length }} flows at once.
+        } @else if (incoming().length > 1) {
+          Join: waits for {{ incoming().length }} flows.
+        } @else if (!outgoing().length && !incoming().length) {
+          Not connected yet.
+        } @else {
+          Connect several flows out (split) or in (join).
+        }
+      </p>
+      <ng-container *ngTemplateOutlet="flowsOut; context: { empty: 'No flows leave this step yet.', pending: '' }" />
+    }
+    @case ('TIMER') {
+      <label class="block">
+        <span class="text-xs font-medium text-muted">Wait</span>
+        <select data-testid="timer-mode" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                (change)="setTimerMode($any($event.target).value)">
+          <option value="duration" [selected]="timerMode() === 'duration'">For a while</option>
+          <option value="date" [selected]="timerMode() === 'date'">Until a date in a form field</option>
+        </select>
+      </label>
+      @if (timerMode() === 'duration') {
+        <app-duration-input label="Wait for" testId="timer-due" [value]="node().duration" (valueChange)="patch.emit({ duration: $event })" />
+      } @else {
+        <input data-testid="timer-variable" aria-label="Date field" list="date-variables" placeholder="form.dueDate"
+               class="block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+               [value]="node().dueDateVariable ?? ''" (change)="patch.emit({ dueDateVariable: $any($event.target).value.trim() })" />
+        <datalist id="date-variables">
+          @for (v of dateVariables(); track v) { <option [value]="v"></option> }
+        </datalist>
+      }
+    }
+    @case ('SYSTEM_ACTION') {
+      <label class="block">
+        <span class="text-xs font-medium text-muted">Action</span>
+        <select data-testid="action-type" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                (change)="setActionType($any($event.target).value)">
+          @for (a of actions; track a.type) {
+            <option [value]="a.type" [selected]="a.type === node().actionType">{{ a.label }}</option>
+          }
+        </select>
+      </label>
+      @switch (node().actionType) {
+        @case ('SEND_EMAIL') {
+          <label class="block">
+            <span class="text-xs font-medium text-muted">To</span>
+            <input data-testid="action-to" placeholder="an address, or form.email" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                   [value]="text('to')" (change)="setConfig('to', $any($event.target).value.trim())" />
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-muted">Template</span>
+            <input data-testid="action-template" placeholder="request-approved" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+                   [value]="text('template')" (change)="setConfig('template', $any($event.target).value.trim())" />
+          </label>
+        }
+        @case ('SET_VARIABLE') {
+          <label class="block">
+            <span class="text-xs font-medium text-muted">Variable</span>
+            <input data-testid="action-variable" placeholder="status.paid" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+                   [value]="text('variable')" (change)="setConfig('variable', $any($event.target).value.trim())" />
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-muted">Value (numbers, true/false and JSON are read as such)</span>
+            <input data-testid="action-value" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+                   [value]="valueText()" (change)="setConfig('value', parseValue($any($event.target).value))" />
+          </label>
+        }
+        @case ('WEBHOOK') {
+          <label class="block">
+            <span class="text-xs font-medium text-muted">URL</span>
+            <input data-testid="action-url" type="url" placeholder="https://…" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                   [value]="text('url')" (change)="setConfig('url', $any($event.target).value.trim())" />
+          </label>
+        }
+      }
+    }
+  }
+</div>
+
+<ng-template #flowsOut let-empty="empty" let-pending="pending">
+  <div class="space-y-1">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">Flows out</p>
+    @for (edge of outgoing(); track edge.id) {
+      <button type="button" [attr.data-testid]="'prop-flow-' + edge.id"
+              class="block w-full rounded-md border border-line px-2 py-1.5 text-left text-sm hover:bg-field"
+              (click)="edgeOpen.emit(edge.id)">
+        <span class="block">To {{ nodeNames()[edge.target] ?? edge.target }}</span>
+        @if (edgeLabel(edge); as label) {
+          <span class="block text-xs text-muted">{{ label }}</span>
+        } @else if (pending) {
+          <span class="block text-xs text-warn-text">{{ pending }}</span>
+        }
+      </button>
+    } @empty {
+      <p class="text-sm text-muted">{{ empty }}</p>
+    }
+  </div>
+</ng-template>

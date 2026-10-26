@@ -1,0 +1,84 @@
+<section class="mx-auto max-w-4xl">
+  <a routerLink="/requests" class="text-sm text-muted hover:underline">← My requests</a>
+
+  @switch (state()) {
+    @case ('loading') {
+      <p class="mt-6 text-sm text-muted">Loading…</p>
+    }
+    @case ('not-found') {
+      <p class="card mt-6 p-6 text-sm text-ink">
+        This request does not exist or you cannot see it.
+      </p>
+    }
+    @case ('failed') {
+      <div class="alert-error mt-6 p-4 text-sm">
+        The request could not be loaded.
+        <button type="button" data-testid="retry" class="ml-2 link" (click)="load()">Retry</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (detail(); as d) {
+        <header class="mt-4 flex flex-wrap items-baseline gap-3">
+          <h1 class="text-2xl font-semibold tracking-tight">{{ d.instance.processKey }}@if (d.instance.businessKey) { · {{ d.instance.businessKey }} }</h1>
+          <app-status-badge [status]="d.instance.status" [endStatus]="d.instance.endStatus" />
+        </header>
+        <p class="mt-1 text-sm text-muted">
+          Submitted by <app-user-name [userId]="d.instance.initiatorId" /> on {{ d.instance.startedAt | date: 'medium' }}
+          @if (d.instance.endedAt) { · finished {{ d.instance.endedAt | date: 'medium' }} }
+        </p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="card p-5">
+            <h2 class="font-semibold">Waiting on</h2>
+            <ul class="mt-3 space-y-2 text-sm">
+              @for (open of openTasks(); track open.id) {
+                <li data-testid="open-task" class="flex flex-wrap items-center gap-2">
+                  <span class="font-medium">{{ open.name }}</span>
+                  <span class="text-muted">
+                    @if (open.assigneeId) { <app-user-name [userId]="open.assigneeId" /> } @else { a group }
+                  </span>
+                  <app-sla-badge [createdAt]="open.createdAt" [dueAt]="open.dueAt" />
+                </li>
+              } @empty {
+                <li class="text-muted">Nothing: no open tasks.</li>
+              }
+            </ul>
+          </div>
+
+          <div class="card p-5">
+            <h2 class="font-semibold">Details</h2>
+            <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              @for (item of details(); track item[0]) {
+                <dt class="text-muted">{{ item[0] }}</dt>
+                <dd class="font-medium break-words">{{ format(item[1]) }}</dd>
+              } @empty {
+                <dd class="col-span-2 text-muted">No details were submitted.</dd>
+              }
+            </dl>
+          </div>
+        </div>
+
+        <div class="card mt-4 p-5">
+          <app-attachments [instanceId]="d.instance.id" />
+        </div>
+
+        <div class="card mt-4 p-5">
+          <h2 class="font-semibold">Timeline</h2>
+          <ol class="mt-3 space-y-3 border-l border-line pl-4 text-sm">
+            @for (line of timeline(); track $index) {
+              <li data-testid="timeline-entry">
+                <p class="font-medium">{{ line.text }}</p>
+                @if (line.comment) {
+                  <p class="mt-0.5 whitespace-pre-line text-ink">“{{ line.comment }}”</p>
+                }
+                <p class="text-xs text-muted">
+                  {{ line.entry.occurredAt | date: 'medium' }} · <app-user-name [userId]="line.entry.actorId" />
+                </p>
+              </li>
+            }
+          </ol>
+        </div>
+      }
+    }
+  }
+</section>

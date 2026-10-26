@@ -1,0 +1,61 @@
+<section class="mx-auto max-w-6xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Inbox</h1>
+  <app-inbox-summary class="mt-4" [version]="version()" (choose)="show($event)" />
+
+  <div class="segmented mt-4" role="tablist">
+    @for (item of tabs(); track item.view) {
+      <button type="button" role="tab" [attr.data-testid]="'tab-' + item.view" [attr.aria-selected]="item.view === view()"
+              (click)="show(item.view)">{{ item.label }}</button>
+    }
+  </div>
+
+  <div class="mt-4 flex flex-wrap items-center gap-4">
+    <input type="search" data-testid="task-filter" placeholder="Filter by task, process or reference" aria-label="Filter tasks"
+           class="w-full max-w-sm rounded-md border border-line-strong px-3 py-1.5 text-sm"
+           [value]="query()" (input)="query.set($any($event.target).value)" />
+    <label class="flex items-center gap-2 text-sm text-ink">
+      <input type="checkbox" data-testid="overdue-only" [checked]="overdueOnly()" (change)="overdueOnly.set($any($event.target).checked)" />
+      Overdue only
+    </label>
+  </div>
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
+    <div>
+      @if (failed()) {
+        <div class="alert-error p-4 text-sm">
+          Your tasks could not be loaded.
+          <button type="button" data-testid="retry" class="ml-2 link" (click)="reload()">Retry</button>
+        </div>
+      } @else if (tasks() === null) {
+        <p class="text-sm text-muted">Loading…</p>
+      } @else {
+        <ul class="card divide-y divide-line">
+          @for (item of visible(); track item.id) {
+            <li>
+              <button type="button" data-testid="task-row" class="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-field"
+                      [class.bg-accent-soft]="selected()?.id === item.id" (click)="selected.set(item)">
+                <span class="min-w-0 flex-1">
+                  <span class="block font-medium">{{ item.name }}</span>
+                  <span class="block text-sm text-muted">
+                    {{ item.processKey }}@if (item.businessKey) { · {{ item.businessKey }} } · from <app-user-name [userId]="item.initiatorId" />
+                  </span>
+                </span>
+                <span class="text-xs text-muted">{{ item.createdAt | date: 'mediumDate' }}</span>
+                <app-sla-badge [createdAt]="item.createdAt" [dueAt]="item.dueAt" />
+              </button>
+            </li>
+          } @empty {
+            <li class="px-4 py-8 text-center text-sm text-muted">{{ tasks()!.length ? 'No tasks match the filter.' : tab().empty }}</li>
+          }
+        </ul>
+      }
+    </div>
+    <aside>
+      @if (selected(); as current) {
+        <app-task-panel [task]="current" (changed)="afterChange()" />
+      } @else {
+        <p class="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted">Select a task to see what it needs.</p>
+      }
+    </aside>
+  </div>
+</section>

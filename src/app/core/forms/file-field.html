@@ -1,0 +1,35 @@
+<div class="mt-1 space-y-2 text-sm">
+  @if (current().length) {
+    <ul class="space-y-1">
+      @for (f of current(); track f.documentId) {
+        <li data-testid="file-ref" class="flex items-center gap-2">
+          <a class="link" target="_blank" rel="noopener" [href]="'/documents/' + f.documentId">{{ f.name }}</a>
+          @if (!readOnly()) {
+            <button type="button" data-testid="file-remove" class="text-muted hover:text-ink"
+                    [attr.aria-label]="'Remove ' + f.name" (click)="remove(f)">✕</button>
+          }
+        </li>
+      }
+    </ul>
+  } @else if (readOnly()) {
+    <p class="text-muted">No files.</p>
+  }
+  @for (p of pending(); track p.id) {
+    <div data-testid="file-pending" class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="font-medium">{{ p.file.name }}</span>
+      <span data-testid="file-status" class="text-muted">{{ p.status }}</span>
+      @if (p.error) {
+        <span data-testid="file-error" class="w-full text-xs text-danger-text">{{ p.error }}</span>
+        <button type="button" data-testid="file-retry" class="text-xs link" (click)="retry(p)">Try again</button>
+        <button type="button" class="text-xs text-muted link" (click)="dismiss(p.id)">Dismiss</button>
+      }
+    </div>
+  }
+  @if (!readOnly() && !full()) {
+    <label class="inline-flex cursor-pointer items-center gap-2">
+      <span class="btn btn-secondary px-3 py-1.5">Add files</span>
+      <input type="file" multiple data-testid="file-input" class="sr-only" [id]="fieldId()"
+             (change)="choose($any($event.target))" />
+    </label>
+  }
+</div>

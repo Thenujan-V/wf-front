@@ -1,0 +1,11 @@
+// The @foblex/flow theme in its own cascade layer, ordered before Tailwind's components and utilities. Unlayered,
+// its node rules (width, border, background, box-shadow) would beat every utility class on a node, including the
+// selection and problem rings. Tailwind's preflight (base) stays below it, so the library's own styling still applies.
+@use '../node_modules/@foblex/flow/styles/index' as flow-theme;
+
+@layer properties, theme, base, foblex, components, utilities;
+
+@layer foblex {
+  @include flow-theme.theme-tokens();
+  @include flow-theme.theme-all();
+}

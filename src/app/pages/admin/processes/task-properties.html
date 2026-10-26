@@ -1,0 +1,141 @@
+<div class="space-y-4">
+  <fieldset class="space-y-2">
+    <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Who does it</legend>
+    <select data-testid="assign-type" aria-label="Assignment" class="block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+            (change)="setAssignmentType($any($event.target).value)">
+      @if (!assignment()) {
+        <option value="" selected disabled>Choose…</option>
+      }
+      @for (a of assignments; track a.type) {
+        <option [value]="a.type" [selected]="a.type === assignment()?.type">{{ a.label }}</option>
+      }
+    </select>
+
+    @switch (assignment()?.type) {
+      @case ('USER') {
+        <p class="text-sm" data-testid="assign-user-name">
+          @if (userId()) { {{ userName(userId())() }} } @else { <span class="text-muted">Nobody chosen yet</span> }
+        </p>
+        <app-user-picker (picked)="pickUser($event)" />
+      }
+      @case ('GROUP') {
+        <select data-testid="assign-group" aria-label="Group" class="block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                (change)="setAssignment({ type: 'GROUP', groupId: $any($event.target).value })">
+          <option value="" [selected]="!groupId()" disabled>{{ groups() === null ? 'Loading groups…' : 'Choose a group' }}</option>
+          @if (groupId() && groups() !== null && !groups()!.some(g => g.id === groupId())) {
+            <option [value]="groupId()" selected>(unknown group {{ groupId() }})</option>
+          }
+          @for (g of groups() ?? []; track g.id) {
+            <option [value]="g.id" [selected]="g.id === groupId()">{{ g.path }}</option>
+          }
+        </select>
+      }
+      @case ('ROLE') {
+        <input data-testid="assign-role" aria-label="Role" list="known-roles" class="block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+               [value]="role()" (change)="setAssignment({ type: 'ROLE', role: $any($event.target).value.trim() })" />
+        <datalist id="known-roles">
+          @for (r of roles; track r) { <option [value]="r"></option> }
+        </datalist>
+      }
+      @case ('INITIATOR_MANAGER') {
+        <label class="flex items-center gap-2 text-sm">
+          Levels up
+          <input type="number" min="1" max="10" data-testid="assign-levels" class="w-16 rounded-md border border-line-strong px-2 py-1 text-sm"
+                 [value]="levels()" (change)="setLevels($any($event.target))" />
+        </label>
+      }
+      @case ('VARIABLE_USER') {
+        <input data-testid="assign-variable" aria-label="Form field holding the person" list="user-variables" placeholder="form.approver"
+               class="block w-full rounded-md border border-line-strong px-2 py-1.5 font-mono text-sm"
+               [value]="variable()" (change)="setAssignment({ type: 'VARIABLE_USER', variable: $any($event.target).value.trim() })" />
+        <datalist id="user-variables">
+          @for (v of userVariables(); track v) { <option [value]="v"></option> }
+        </datalist>
+      }
+    }
+
+    <label class="block">
+      <span class="text-xs font-medium text-muted">How many must act</span>
+      <select data-testid="mode" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm disabled:bg-field"
+              [disabled]="!multiAllowed()" (change)="setMode($any($event.target).value)">
+        @for (m of modes; track m.mode) {
+          <option [value]="m.mode" [selected]="m.mode === (node().approvalMode ?? 'SINGLE')">{{ m.label }}</option>
+        }
+      </select>
+    </label>
+    @if (node().approvalMode === 'PERCENT') {
+      <label class="flex items-center gap-2 text-sm">
+        <input type="number" min="1" max="100" data-testid="percent" class="w-20 rounded-md border border-line-strong px-2 py-1 text-sm"
+               [value]="node().percent ?? ''" (change)="setPercent($any($event.target))" />
+        % must approve
+      </label>
+    }
+  </fieldset>
+
+  <fieldset class="space-y-2">
+    <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Outcomes</legend>
+    @for (o of outcomes(); track o; let i = $index) {
+      <div class="flex gap-2">
+        <input [attr.data-testid]="'outcome-' + i" [attr.aria-label]="'Outcome ' + (i + 1)"
+               class="min-w-0 flex-1 rounded-md border border-line-strong px-2 py-1 font-mono text-sm"
+               [value]="o" (change)="rename(o, $any($event.target))" />
+        <button type="button" [attr.data-testid]="'outcome-remove-' + i" class="text-xs text-muted hover:text-danger-text"
+                (click)="outcomeRemove.emit(o)">Remove</button>
+      </div>
+    }
+    <form class="flex gap-2" (submit)="$event.preventDefault(); addOutcome()">
+      <input data-testid="outcome-new" aria-label="New outcome" placeholder="e.g. SEND_BACK"
+             class="min-w-0 flex-1 rounded-md border border-line-strong px-2 py-1 font-mono text-sm"
+             [value]="newOutcome()" (input)="newOutcome.set($any($event.target).value)" />
+      <button type="submit" data-testid="outcome-add" class="btn btn-secondary px-2 py-1 text-xs">Add</button>
+    </form>
+  </fieldset>
+
+  <fieldset class="space-y-2">
+    <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Deadline</legend>
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" data-testid="sla-on" [checked]="!!sla()" (change)="toggleSla($any($event.target).checked)" />
+      Set a deadline
+    </label>
+    @if (sla(); as s) {
+      <app-duration-input label="Due within" testId="sla-due" [value]="s.dueIn" (valueChange)="setDue($event)" />
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" data-testid="sla-business" [checked]="!!s.businessDays" [disabled]="!dueInDays()"
+               (change)="setBusinessDays($any($event.target).checked)" />
+        Count working days only
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        Remind at
+        <input type="number" min="1" max="99" data-testid="sla-reminder" class="w-16 rounded-md border border-line-strong px-2 py-1 text-sm"
+               [value]="s.reminderPercent ?? ''" (change)="setReminder($any($event.target).value)" />
+        % of the time
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-muted">When it is overdue</span>
+        <select data-testid="sla-breach" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                (change)="setBreach($any($event.target).value)">
+          @if (!s.onBreach) {
+            <option value="" selected disabled>Choose…</option>
+          }
+          @for (b of breachActions; track b.action) {
+            <option [value]="b.action" [selected]="b.action === s.onBreach">{{ b.label }}</option>
+          }
+        </select>
+      </label>
+      @if (s.onBreach === 'AUTO_COMPLETE') {
+        <label class="block">
+          <span class="text-xs font-medium text-muted">Complete with</span>
+          <select data-testid="sla-auto-outcome" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+                  (change)="setAutoOutcome($any($event.target).value)">
+            @if (!s.autoOutcome) {
+              <option value="" selected disabled>Choose an outcome</option>
+            }
+            @for (o of outcomes(); track o) {
+              <option [value]="o" [selected]="o === s.autoOutcome">{{ o }}</option>
+            }
+          </select>
+        </label>
+      }
+    }
+  </fieldset>
+</div>

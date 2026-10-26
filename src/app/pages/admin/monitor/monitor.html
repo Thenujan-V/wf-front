@@ -1,0 +1,131 @@
+<section class="mx-auto max-w-6xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Monitor</h1>
+  <p class="mt-1 text-sm text-muted">Every request, whoever started it, and the background jobs that gave up.</p>
+
+  <div class="segmented mt-4" role="group" aria-label="What to show">
+    <button type="button" data-testid="tab-requests" [attr.aria-pressed]="tab() === 'requests'" (click)="tab.set('requests')">Requests</button>
+    <button type="button" data-testid="tab-jobs" [attr.aria-pressed]="tab() === 'jobs'" (click)="tab.set('jobs')">Dead jobs ({{ jobsCount() }})</button>
+  </div>
+
+  @if (tab() === 'requests') {
+    <form class="card mt-4 grid gap-3 p-4 text-sm md:grid-cols-4"
+          (submit)="$event.preventDefault(); search()">
+      <label class="block">
+        <span class="font-medium text-ink">Status</span>
+        <select data-testid="filter-status" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1.5"
+                (change)="status.set($any($event.target).value)">
+          @for (s of statuses; track s.value) {
+            <option [value]="s.value" [selected]="status() === s.value">{{ s.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="block">
+        <span class="font-medium text-ink">Process</span>
+        <input data-testid="filter-process" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1.5 font-mono"
+               placeholder="expense-request" list="monitor-processes" [value]="processKey()" (input)="processKey.set($any($event.target).value)" />
+        <datalist id="monitor-processes">
+          @for (key of processKeys(); track key) {
+            <option [value]="key"></option>
+          }
+        </datalist>
+      </label>
+      <label class="block">
+        <span class="font-medium text-ink">Reference or id</span>
+        <input data-testid="filter-q" class="mt-1 w-full rounded-md border border-line-strong px-2 py-1.5"
+               placeholder="Reference starts with…, or a full id" [value]="q()" (input)="q.set($any($event.target).value)" />
+      </label>
+      <div class="flex items-end">
+        <button type="submit" data-testid="search" class="btn btn-primary px-4 py-2">Search</button>
+      </div>
+    </form>
+
+    @switch (state()) {
+      @case ('loading') {
+        <p class="mt-4 text-sm text-muted">Loading…</p>
+      }
+      @case ('failed') {
+        <div class="alert-error mt-4 p-4 text-sm">
+          The requests could not be loaded.
+          <button type="button" data-testid="retry" class="ml-2 link" (click)="retryLoad()">Retry</button>
+        </div>
+      }
+      @default {
+        @if (results(); as r) {
+          <ul class="card mt-4 divide-y divide-line text-sm">
+            @for (i of r.items; track i.id) {
+              <li data-testid="instance-row" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                <div class="min-w-0 flex-1">
+                  <a class="font-medium link" [routerLink]="['/requests', i.id]">{{ i.businessKey ?? i.id }}</a>
+                  <span class="ml-2 text-muted">{{ i.processKey }} · version {{ i.processVersion }}</span>
+                  <div class="text-xs text-muted">
+                    Started by <app-user-name [userId]="i.initiatorId" /> · {{ i.startedAt | date: 'medium' }}
+                  </div>
+                </div>
+                <app-status-badge [status]="i.status" [endStatus]="i.endStatus" />
+                <div class="flex gap-2">
+                  @if (i.status === 'ACTIVE') {
+                    <button type="button" data-testid="suspend" class="btn btn-secondary px-2 py-1 text-xs"
+                            [disabled]="busy().has(i.id)" (click)="act(i, 'suspend')">Put on hold</button>
+                  }
+                  @if (i.status === 'SUSPENDED') {
+                    <button type="button" data-testid="resume" class="btn btn-secondary px-2 py-1 text-xs"
+                            [disabled]="busy().has(i.id)" (click)="act(i, 'resume')">Resume</button>
+                  }
+                  @if (i.status === 'ACTIVE' || i.status === 'SUSPENDED') {
+                    <button type="button" data-testid="cancel" class="btn btn-danger px-2 py-1 text-xs"
+                            [disabled]="busy().has(i.id)" (click)="act(i, 'cancel')">Cancel</button>
+                  }
+                </div>
+              </li>
+            } @empty {
+              <li class="px-4 py-8 text-center text-muted">No requests match.</li>
+            }
+          </ul>
+
+          <div class="mt-3 flex items-center gap-3 text-sm">
+            <button type="button" data-testid="previous" class="btn btn-secondary px-3 py-1.5"
+                    [disabled]="page() === 0" (click)="go(-1)">Previous</button>
+            <span class="text-muted">Page {{ r.page + 1 }} of {{ pages() }} · {{ r.total }} requests</span>
+            <button type="button" data-testid="next" class="btn btn-secondary px-3 py-1.5"
+                    [disabled]="page() >= pages() - 1" (click)="go(1)">Next</button>
+          </div>
+        }
+      }
+    }
+  } @else {
+    @switch (jobsState()) {
+      @case ('loading') {
+        <p class="mt-4 text-sm text-muted">Loading…</p>
+      }
+      @case ('failed') {
+        <div class="alert-error mt-4 p-4 text-sm">
+          The dead jobs could not be loaded.
+          <button type="button" data-testid="retry-jobs" class="ml-2 link" (click)="loadJobs()">Retry</button>
+        </div>
+      }
+      @default {
+        @if (jobsCapped()) {
+          <p class="mt-4 text-sm text-muted">Only the first 200 are shown.</p>
+        }
+        <ul class="card mt-4 divide-y divide-line text-sm">
+          @for (job of jobs(); track job.id) {
+            <li data-testid="job-row" class="flex flex-wrap items-start gap-x-4 gap-y-1 px-4 py-3">
+              <div class="min-w-0 flex-1">
+                <span class="font-medium">{{ humanize(job.type) }}</span>
+                <span class="ml-2 text-muted">
+                  for <a class="link" [routerLink]="['/requests', job.instanceId]">{{ job.businessKey ?? job.instanceId }}</a>
+                  · {{ job.processKey }} · due {{ job.dueAt | date: 'medium' }} · {{ job.attempts }} attempts
+                </span>
+                <p class="mt-1 whitespace-pre-wrap break-words text-xs text-danger-text">{{ job.lastError ?? 'No error was recorded.' }}</p>
+              </div>
+              <button type="button" data-testid="retry-job" class="btn btn-secondary px-2 py-1 text-xs"
+                      [disabled]="busy().has(job.id)" (click)="retry(job)">Try again</button>
+            </li>
+          } @empty {
+            <li class="px-4 py-8 text-center text-muted">No dead jobs.</li>
+          }
+        </ul>
+      }
+    }
+  }
+</section>

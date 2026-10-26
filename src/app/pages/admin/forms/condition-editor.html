@@ -1,0 +1,78 @@
+<div class="rounded-md border border-line p-3" [attr.data-testid]="'rule-' + testId()">
+  <p class="text-sm font-medium text-ink">{{ label() }}</p>
+  @if (read().kind === 'advanced') {
+    <p class="mt-1 text-xs text-muted">This rule was written by hand and can't be edited here.</p>
+    <button type="button" data-testid="rule-clear" class="mt-2 text-xs link" (click)="clear()">Remove the rule</button>
+  } @else {
+    @if (model(); as m) {
+      @if (m.rows.length > 1) {
+        <select class="mt-2 rounded border border-line-strong px-2 py-1 text-xs" aria-label="How conditions combine"
+                (change)="setMode($any($event.target).value)">
+          <option value="all" [selected]="m.mode === 'all'">All of these are true</option>
+          <option value="any" [selected]="m.mode === 'any'">Any of these is true</option>
+        </select>
+      }
+      @for (r of m.rows; track $index; let i = $index) {
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs" data-testid="rule-row">
+          <select data-testid="rule-field" aria-label="Field" class="rounded border border-line-strong px-2 py-1"
+                  (change)="setField(i, $any($event.target).value)">
+            @if (!fieldOf(r.field)) {
+              <option value="" selected disabled>(not above this field: {{ r.field }})</option>
+            }
+            @for (f of fields(); track f.key) {
+              <option [value]="f.key" [selected]="f.key === r.field">{{ f.label }}</option>
+            }
+          </select>
+          <select data-testid="rule-op" aria-label="Comparison" class="rounded border border-line-strong px-2 py-1"
+                  (change)="setOp(i, $any($event.target).value)">
+            @for (o of operators(r.field); track o.op) {
+              <option [value]="o.op" [selected]="o.op === r.op">{{ o.label }}</option>
+            }
+          </select>
+          @if (needsValue(r.op)) {
+            @switch (valueKind(r.field)) {
+              @case ('boolean') {
+                <select data-testid="rule-value" aria-label="Value" class="rounded border border-line-strong px-2 py-1"
+                        (change)="setValue(i, $any($event.target).value === 'true')">
+                  <option value="true" [selected]="r.value === true">ticked</option>
+                  <option value="false" [selected]="r.value === false">not ticked</option>
+                </select>
+              }
+              @case ('options') {
+                <select data-testid="rule-value" aria-label="Value" class="rounded border border-line-strong px-2 py-1"
+                        (change)="setValue(i, $any($event.target).value)">
+                  @if (!hasOption(r.field, r.value)) {
+                    <option value="" selected disabled>(no longer an option: {{ text(r.value) }})</option>
+                  }
+                  @for (o of optionsOf(r.field); track o.value) {
+                    <option [value]="o.value" [selected]="o.value === r.value">{{ o.label }}</option>
+                  }
+                </select>
+              }
+              @case ('number') {
+                <input data-testid="rule-value" aria-label="Value" type="number" class="w-28 rounded border border-line-strong px-2 py-1"
+                       [value]="text(r.value)" (input)="setNumber(i, $any($event.target).value)" />
+              }
+              @case ('date') {
+                <input data-testid="rule-value" aria-label="Value" type="date" class="rounded border border-line-strong px-2 py-1"
+                       [value]="text(r.value)" (input)="setValue(i, $any($event.target).value)" />
+              }
+              @default {
+                <input data-testid="rule-value" aria-label="Value" type="text" class="w-40 rounded border border-line-strong px-2 py-1"
+                       [value]="text(r.value)" (input)="setValue(i, $any($event.target).value)" />
+              }
+            }
+          }
+          <button type="button" class="text-muted hover:text-ink" aria-label="Remove condition" (click)="remove(i)">✕</button>
+        </div>
+      }
+    } @else {
+      <p class="mt-1 text-xs text-muted">Always.</p>
+    }
+    @if (fields().length) {
+      <button type="button" data-testid="rule-add" class="mt-2 text-xs link" (click)="add()">Add a condition</button>
+    } @else {
+      <p class="mt-1 text-xs text-muted">Rules can only use fields above this one, and there are none yet.</p>
+    }
+  }
+</div>

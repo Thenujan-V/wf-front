@@ -1,0 +1,19 @@
+<div class="space-y-6">
+  @for (section of sections(); track section.id) {
+    <fieldset class="card p-4">
+      @if (section.title) {
+        <legend class="px-1 text-sm font-semibold text-ink">{{ section.title }}</legend>
+      }
+      <div [class]="gridClass(section.columns)">
+        @for (field of section.fields; track field.key) {
+          @if (shown(field)) {
+            <div [class]="spanClass(field, section.columns)" [attr.data-field]="field.key">
+              <app-form-field [field]="field" [value]="value(field.key)" [readOnly]="readOnly(field)" [errors]="errors()"
+                              (valueChange)="set(field.key, $event)" (busy)="setBusy(field.key, $event)" />
+            </div>
+          }
+        }
+      </div>
+    </fieldset>
+  }
+</div>

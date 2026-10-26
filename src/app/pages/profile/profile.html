@@ -1,0 +1,44 @@
+<section class="mx-auto max-w-3xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Your profile</h1>
+
+  @if (failed()) {
+    <p class="alert-error mt-6 p-4 text-sm">Your profile could not be loaded. Try again shortly.</p>
+  } @else if (me(); as me) {
+    <div class="card mt-6 p-6">
+      <p class="text-lg font-medium">{{ me.displayName }}</p>
+      <p class="text-sm text-muted">{{ me.username }} · {{ me.email ?? 'No email' }}</p>
+
+      <dl class="mt-6 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <dt class="text-muted">Department</dt>
+          <dd class="font-medium">{{ me.department ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Position</dt>
+          <dd class="font-medium">{{ me.position ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Manager</dt>
+          <dd class="font-medium">{{ me.managerId ? (manager()?.displayName ?? '…') : 'No manager' }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Roles</dt>
+          <dd class="font-medium">{{ me.roles.join(', ') || '—' }}</dd>
+        </div>
+        <div class="sm:col-span-2">
+          <dt class="text-muted">Groups</dt>
+          <dd class="font-medium">
+            @for (group of me.groups; track group.id) {
+              <span class="mr-2 inline-block rounded bg-field px-2 py-0.5">{{ group.path }}</span>
+            } @empty {
+              —
+            }
+          </dd>
+        </div>
+      </dl>
+    </div>
+  } @else {
+    <p class="mt-6 text-sm text-muted">Loading…</p>
+  }
+  <app-notification-preferences />
+</section>

@@ -1,0 +1,137 @@
+<section class="mx-auto max-w-6xl md:flex md:items-start md:gap-4">
+  <div class="md:w-60 md:shrink-0">
+    <button type="button" data-testid="folders-toggle" class="btn btn-secondary mb-3 gap-1.5 px-3 py-1.5 text-sm md:hidden"
+            aria-controls="folder-tree" [attr.aria-expanded]="treeOpen()" (click)="treeOpen.set(!treeOpen())">
+      <app-icon name="folder" /> Folders
+    </button>
+    <aside id="folder-tree" class="card mb-4 p-2 md:sticky md:top-4 md:block md:max-h-[calc(100vh-7rem)] md:overflow-y-auto"
+           [class.hidden]="!treeOpen()">
+      <p class="nav-group mt-1">Folders</p>
+      <app-folder-tree [current]="currentId()" (chosen)="treeOpen.set(false)" />
+    </aside>
+  </div>
+  <div class="min-w-0 flex-1">
+  @switch (state()) {
+    @case ('loading') {
+      <p class="text-sm text-muted">Loading…</p>
+    }
+    @case ('missing') {
+      <div data-testid="missing" class="card p-6 text-sm text-ink">
+        This folder does not exist or you do not have access to it.
+        <a routerLink="/documents" class="ml-2 link">Go to the library</a>
+      </div>
+    }
+    @case ('failed') {
+      <div class="alert-error p-4 text-sm">
+        The library could not be loaded. <button type="button" class="ml-2 link" (click)="load(id())">Retry</button>
+      </div>
+    }
+    @default {
+      @if (folder(); as f) {
+        <nav aria-label="Folder path" class="flex flex-wrap items-center gap-1 text-sm text-muted">
+          @for (p of f.path; track p.id) {
+            <a data-testid="crumb" class="hover:underline" [routerLink]="['/documents/folders', p.id]">{{ p.name }}</a>
+            <span aria-hidden="true">/</span>
+          }
+        </nav>
+
+        <header class="mt-1 flex flex-wrap items-center gap-3">
+          @if (renaming() !== null) {
+            <form class="flex gap-2" (submit)="$event.preventDefault(); saveRename()">
+              <input data-testid="rename-input" aria-label="Folder name" class="rounded-md border border-line-strong px-2 py-1 text-lg"
+                     [value]="renaming()" (input)="renaming.set($any($event.target).value)" />
+              <button type="submit" data-testid="save-rename" class="btn btn-primary px-3 py-1 text-sm">Save</button>
+              <button type="button" class="text-sm link" (click)="renaming.set(null)">Cancel</button>
+            </form>
+          } @else {
+            <h1 data-testid="folder-name" class="text-2xl font-semibold tracking-tight">{{ f.name }}</h1>
+          }
+          <div class="ml-auto flex flex-wrap gap-2 text-sm">
+            @if (canWrite()) {
+              <button type="button" data-testid="new-document" class="btn btn-primary px-3 py-1.5"
+                      (click)="newDocumentName.set('')">New document</button>
+              <button type="button" data-testid="new-folder" class="btn btn-secondary px-3 py-1.5"
+                      (click)="newFolderName.set('')">New folder</button>
+              @if (f.parentId && renaming() === null) {
+                <button type="button" data-testid="rename-folder" class="btn btn-secondary px-3 py-1.5"
+                        (click)="renaming.set(f.name)">Rename</button>
+              }
+            }
+            @if (canManage()) {
+              <a data-testid="permissions-link" class="btn btn-secondary px-3 py-1.5"
+                 [routerLink]="['/documents/folders', f.id, 'permissions']">Permissions</a>
+            }
+            @if (canDelete()) {
+              <button type="button" data-testid="delete-folder" class="btn btn-danger px-3 py-1.5"
+                      (click)="deleteFolder()">Delete</button>
+            }
+          </div>
+        </header>
+
+        <form class="mt-4 flex gap-2" (submit)="$event.preventDefault(); search()">
+          <input type="search" data-testid="search-input" aria-label="Search documents" placeholder="Search in this folder"
+                 class="min-w-0 flex-1 rounded-md border border-line-strong px-3 py-1.5 text-sm"
+                 [value]="query()" (input)="query.set($any($event.target).value)" />
+          <button type="submit" data-testid="search-submit" class="btn btn-secondary px-3 py-1.5 text-sm">Search</button>
+        </form>
+
+        @if (newFolderName() !== null) {
+          <form class="mt-3 flex gap-2" (submit)="$event.preventDefault(); createFolder()">
+            <input data-testid="new-folder-name" aria-label="New folder name" placeholder="Folder name"
+                   class="rounded-md border border-line-strong px-3 py-1.5 text-sm"
+                   [value]="newFolderName()" (input)="newFolderName.set($any($event.target).value)" />
+            <button type="submit" data-testid="create-folder" class="btn btn-primary px-3 py-1.5 text-sm">Create</button>
+            <button type="button" class="text-sm link" (click)="newFolderName.set(null)">Cancel</button>
+          </form>
+        }
+
+        @if (newDocumentName() !== null) {
+          <form class="card mt-4 flex flex-wrap items-center gap-2 p-3" (submit)="$event.preventDefault(); createDocument()">
+            <input data-testid="new-document-name" aria-label="New document name" placeholder="Document name"
+                   class="min-w-56 flex-1 rounded-md border border-line-strong px-3 py-1.5 text-sm"
+                   [value]="newDocumentName()" (input)="newDocumentName.set($any($event.target).value)" />
+            <button type="submit" data-testid="create-document" class="btn btn-primary px-3 py-1.5 text-sm"
+                    [disabled]="!newDocumentName()?.trim()">Create and write</button>
+            <button type="button" class="text-sm link" (click)="newDocumentName.set(null)">Cancel</button>
+          </form>
+        }
+
+        @if (canWrite()) {
+          <div class="mt-4">
+            <app-upload-list [folderId]="f.id" (uploaded)="uploaded()" />
+          </div>
+        }
+
+        <div class="card mt-4 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-field text-left text-xs uppercase tracking-wide text-muted">
+              <tr>
+                <th class="px-3 py-2">Name</th><th class="px-3 py-2">Version</th><th class="px-3 py-2">Size</th>
+                <th class="px-3 py-2">Updated</th><th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              @for (d of documents(); track d.id) {
+                <tr data-testid="document-row">
+                  <td class="px-3 py-2">
+                    <a class="font-medium hover:underline" [routerLink]="['/documents', d.id]">{{ d.name }}</a>
+                    @if (d.kind === 'WRITTEN' && !d.currentVersion) { <span class="badge ml-2">Draft</span> }
+                  </td>
+                  <td class="px-3 py-2">{{ d.currentVersion?.label ?? '—' }}</td>
+                  <td class="px-3 py-2">{{ d.currentVersion ? formatSize(d.currentVersion.size) : '—' }}</td>
+                  <td class="px-3 py-2">{{ d.updatedAt | date: 'medium' }}</td>
+                  <td class="px-3 py-2 text-xs text-warn-text">
+                    @if (d.checkedOutBy) { Checked out by {{ userName(d.checkedOutBy)() }} }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="px-3 py-8 text-center text-muted">No documents in this folder yet.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+  </div>
+</section>

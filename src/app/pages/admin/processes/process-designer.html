@@ -1,0 +1,102 @@
+<section class="flex h-[calc(100vh-7rem)] flex-col gap-3">
+  <header class="flex flex-wrap items-center gap-3">
+    <a routerLink="/admin/processes" class="text-sm text-muted hover:underline">← Processes</a>
+    <input data-testid="process-name" aria-label="Process name"
+           class="min-w-56 flex-1 rounded-md border border-transparent px-2 py-1 text-xl font-semibold hover:border-line-strong focus:border-line-strong"
+           [value]="processName()" (input)="processName.set($any($event.target).value)" />
+    <span class="font-mono text-xs text-muted">{{ key() }}</span>
+    @if (state() === 'ready') {
+      <span data-testid="source-note" class="text-xs text-muted">
+        @switch (source()) {
+          @case ('draft') { Draft }
+          @case ('published') { Copied from published version {{ copiedVersion() }}; save to start a draft }
+          @case ('new') { New process, not saved yet }
+        }
+        @if (hasUnsavedChanges()) { · unsaved changes }
+      </span>
+    }
+    <div class="ml-auto flex gap-2">
+      <button type="button" data-testid="save" [disabled]="state() !== 'ready' || !!busy()"
+              class="btn btn-secondary px-3 py-1.5 text-sm" (click)="save()">
+        {{ busy() === 'save' ? 'Saving…' : 'Save draft' }}</button>
+      <button type="button" data-testid="check" [disabled]="state() !== 'ready' || !!busy()"
+              class="btn btn-secondary px-3 py-1.5 text-sm" (click)="check()">
+        {{ busy() === 'check' ? 'Checking…' : 'Check' }}</button>
+      <button type="button" data-testid="publish" [disabled]="state() !== 'ready' || !!busy()"
+              class="btn btn-primary px-3 py-1.5 text-sm" (click)="publish()">
+        {{ busy() === 'publish' ? 'Publishing…' : 'Publish' }}</button>
+    </div>
+  </header>
+
+  @if (state() === 'loading') {
+    <p class="text-sm text-muted">Loading…</p>
+  } @else if (state() === 'failed') {
+    <div class="alert-error p-4 text-sm">
+      This process could not be loaded. <button type="button" class="ml-2 link" (click)="load(key())">Retry</button>
+    </div>
+  } @else {
+    @if (notice(); as message) {
+      <div data-testid="notice" class="flex items-start gap-2 rounded-md border border-warn-soft bg-warn-soft px-3 py-2 text-sm text-warn-text">
+        <span class="flex-1">{{ message }}</span>
+        <button type="button" class="text-xs link" (click)="notice.set(null)">Dismiss</button>
+      </div>
+    }
+
+    <div class="grid min-h-0 flex-1 grid-cols-[10rem_1fr_20rem] gap-3">
+      <nav aria-label="Steps to add" class="space-y-1 overflow-y-auto">
+        <p class="text-xs font-semibold uppercase tracking-wide text-muted">Add a step</p>
+        @for (item of palette(); track item.type) {
+          <button type="button" [attr.data-testid]="'palette-' + item.type" [title]="item.hint"
+                  class="block w-full rounded-md border border-line bg-surface px-2 py-1.5 text-left text-sm hover:bg-field"
+                  (click)="add(item.type)">{{ item.label }}</button>
+        }
+        <p class="pt-2 text-xs text-muted">Drag from a step's right dot to another step's left dot to connect them.</p>
+      </nav>
+
+      <div class="min-h-0 overflow-hidden rounded-lg border border-line bg-field">
+        <app-process-canvas [graph]="graph()" [selectedNode]="selectedNode()?.id ?? null" [selectedEdge]="selectedEdge()?.id ?? null"
+                            [problemNodes]="problemNodes()" (nodesMoved)="onMoved($event)" (connected)="onConnected($event)"
+                            (reconnected)="onReconnected($event)" (nodeSelected)="select({ kind: 'node', id: $event })"
+                            (edgeSelected)="select({ kind: 'edge', id: $event })" (selectionCleared)="select(null)" />
+      </div>
+
+      <aside class="card min-h-0 overflow-y-auto p-3" aria-label="Properties">
+        @if (selectedNode(); as node) {
+          <app-node-properties [node]="node" [userVariables]="userVariables()" [dateVariables]="dateVariables()"
+                               [outgoing]="selectedOutgoing()" [incoming]="selectedIncoming()" [nodeNames]="nodeNames()"
+                               (edgeOpen)="openEdge($event)"
+                               (patch)="patchNode($event)" (outcomeAdd)="addOutcome($event)" (outcomeRename)="renameOutcome($event)"
+                               (outcomeRemove)="removeOutcome($event)" (remove)="removeSelectedNode()" />
+        } @else if (selectedEdge(); as edge) {
+          <app-edge-properties [edge]="edge" [source]="edgeSource(edge)" [target]="edgeTarget(edge)" [fields]="ruleFields()"
+                               (patch)="patchEdge($event)" (remove)="removeSelectedEdge()"
+                               (back)="openNode(edge.source)" />
+        } @else {
+          <p data-testid="panel-empty" class="text-sm text-muted">Select a step or a flow to change its settings.</p>
+        }
+      </aside>
+    </div>
+
+    @if (problems(); as list) {
+      @if (list.length) {
+        <section aria-label="Problems" class="max-h-40 overflow-y-auto rounded-lg border border-danger-soft bg-danger-soft p-3">
+          <p class="text-sm font-medium text-danger-text">{{ list.length }} problem{{ list.length === 1 ? '' : 's' }} to fix before publishing</p>
+          <ul class="mt-1 space-y-1 text-sm text-danger-text">
+            @for (p of list; track $index) {
+              <li data-testid="problem">
+                @if (p.nodeId && nodeById(p.nodeId); as node) {
+                  <button type="button" class="font-medium link" (click)="selectProblem(p)">{{ node.name }}</button>:
+                } @else if (p.nodeId) {
+                  <span class="font-mono">{{ p.nodeId }}</span>:
+                } @else {
+                  <span class="font-medium">Process</span>:
+                }
+                {{ p.message }}
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  }
+</section>

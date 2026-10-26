@@ -1,0 +1,37 @@
+<section class="mx-auto max-w-4xl">
+  @if (state() === 'loading') {
+    <p class="text-sm text-muted">Loading…</p>
+  } @else if (state() === 'failed') {
+    <div class="alert-error p-4 text-sm">
+      {{ failure() }} <a class="ml-2 link" [routerLink]="['/documents', id()]">Back to the document</a>
+    </div>
+  } @else {
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="min-w-0 flex-1 truncate text-2xl font-semibold tracking-tight">{{ name() || 'Document' }}</h1>
+      @if (editing()) {
+        <span data-testid="save-status" class="text-sm text-muted" aria-live="polite">
+          @switch (status()) {
+            @case ('saved') { Saved }
+            @case ('saving') { Saving… }
+            @case ('unsaved') { Not saved yet }
+            @case ('failed') { <span class="text-danger-text">Not saved. Trying again…</span> }
+          }
+        </span>
+      }
+      <button type="button" data-testid="done" class="btn btn-primary px-4 py-1.5 text-sm" (click)="done()">Done</button>
+    </div>
+
+    @if (problem(); as p) {
+      <div data-testid="editor-problem" class="alert-error mt-3 p-3 text-sm">
+        {{ p.message }}
+        @if (p.canReload) {
+          <button type="button" data-testid="reload" class="ml-2 link" (click)="open(id())">Reload</button>
+        }
+      </div>
+    }
+
+    <div class="card mt-4">
+      <app-rich-text-editor [content]="loaded()" [editable]="editing()" (changed)="typed($event)" />
+    </div>
+  }
+</section>

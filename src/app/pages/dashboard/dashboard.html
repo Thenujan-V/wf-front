@@ -1,0 +1,115 @@
+<section class="mx-auto max-w-6xl">
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <div class="segmented ml-auto" role="group" aria-label="Period">
+      @for (period of periods; track period) {
+        <button type="button" [attr.data-testid]="'period-' + period" [attr.aria-pressed]="days() === period" (click)="choose(period)">{{ period }} days</button>
+      }
+    </div>
+  </div>
+
+  @switch (state()) {
+    @case ('loading') {
+      <p class="mt-4 text-sm text-muted">Loading…</p>
+    }
+    @case ('failed') {
+      <div class="alert-error mt-4 p-4 text-sm">
+        The figures could not be loaded.
+        <button type="button" data-testid="retry" class="ml-2 link" (click)="retry()">Retry</button>
+      </div>
+    }
+    @default {
+      @if (stats(); as s) {
+        <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div data-testid="stat-started" class="card p-4">
+            <dt class="text-sm text-muted">Requests started</dt>
+            <dd class="mt-1 text-2xl font-semibold">{{ s.totals.started }}</dd>
+          </div>
+          <div data-testid="stat-completed" class="card p-4">
+            <dt class="text-sm text-muted">Requests finished</dt>
+            <dd class="mt-1 text-2xl font-semibold">{{ s.totals.completed }}</dd>
+            <dd class="text-xs text-muted">{{ s.totals.cancelled }} cancelled</dd>
+          </div>
+          <div data-testid="stat-active" class="card p-4">
+            <dt class="text-sm text-muted">In progress now</dt>
+            <dd class="mt-1 text-2xl font-semibold">{{ s.totals.active }}</dd>
+          </div>
+          <div data-testid="stat-cycle" class="card p-4">
+            <dt class="text-sm text-muted">Average time to finish</dt>
+            <dd class="mt-1 text-2xl font-semibold">{{ duration(s.totals.averageCycleSeconds) }}</dd>
+          </div>
+          <div data-testid="stat-breaches" class="card p-4">
+            <dt class="text-sm text-muted">Deadlines missed</dt>
+            <dd class="mt-1 text-2xl font-semibold">{{ s.totals.slaBreaches }}</dd>
+          </div>
+        </dl>
+
+        <div class="card mt-6 p-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <h2 class="font-semibold">Requests per day</h2>
+            <span class="text-xs text-muted"><span class="mr-1 inline-block h-2 w-2 bg-accent"></span>Started</span>
+            <span class="text-xs text-muted"><span class="mr-1 inline-block h-2 w-2 bg-ok"></span>Finished</span>
+          </div>
+          <div class="mt-3 flex h-40 items-end gap-px" aria-hidden="true">
+            @for (day of s.daily; track day.date) {
+              <div data-testid="day" class="flex h-full min-w-0 flex-1 items-end justify-center gap-px"
+                   [attr.title]="(day.date | date: 'd MMM') + ': ' + day.started + ' started, ' + day.completed + ' finished'">
+                <div data-testid="bar" class="w-1/2 max-w-3 bg-accent" [style.height]="height(day.started)"></div>
+                <div data-testid="bar" class="w-1/2 max-w-3 bg-ok" [style.height]="height(day.completed)"></div>
+              </div>
+            }
+          </div>
+          <div class="mt-1 flex justify-between text-xs text-muted" aria-hidden="true">
+            <span>{{ s.daily[0]?.date | date: 'd MMM' }}</span>
+            <span>{{ s.daily[s.daily.length - 1]?.date | date: 'd MMM' }}</span>
+          </div>
+          <div class="sr-only">
+          <table data-testid="daily-table">
+            <caption>Requests started and finished per day</caption>
+            <thead><tr><th scope="col">Day</th><th scope="col">Started</th><th scope="col">Finished</th></tr></thead>
+            <tbody>
+              @for (day of s.daily; track day.date) {
+                <tr><th scope="row">{{ day.date | date: 'd MMM' }}</th><td>{{ day.started }}</td><td>{{ day.completed }}</td></tr>
+              }
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <h2 class="mt-6 font-semibold">By process</h2>
+        @if (s.processes.length > 0) {
+          <div class="card mt-2 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-muted">
+                  <th scope="col" class="px-4 py-2 font-medium">Process</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">Started</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">Finished</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">Cancelled</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">In progress</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">Average time</th>
+                  <th scope="col" class="px-4 py-2 text-right font-medium">Deadlines missed</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                @for (p of s.processes; track p.processKey) {
+                  <tr data-testid="process-row">
+                    <th scope="row" class="px-4 py-2 text-left font-medium">{{ p.name }}</th>
+                    <td class="px-4 py-2 text-right">{{ p.started }}</td>
+                    <td class="px-4 py-2 text-right">{{ p.completed }}</td>
+                    <td class="px-4 py-2 text-right">{{ p.cancelled }}</td>
+                    <td class="px-4 py-2 text-right">{{ p.active }}</td>
+                    <td class="px-4 py-2 text-right">{{ duration(p.averageCycleSeconds) }}</td>
+                    <td class="px-4 py-2 text-right">{{ p.slaBreaches }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="mt-2 text-sm text-muted">No requests in this period.</p>
+        }
+      }
+    }
+  }
+</section>

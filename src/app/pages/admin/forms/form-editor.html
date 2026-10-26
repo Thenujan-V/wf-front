@@ -1,0 +1,97 @@
+<section class="mx-auto max-w-7xl">
+  <a routerLink="/admin/forms" class="text-sm text-muted hover:underline">← Forms</a>
+
+  @switch (state()) {
+    @case ('loading') {
+      <p class="mt-6 text-sm text-muted">Loading…</p>
+    }
+    @case ('failed') {
+      <p class="alert-error mt-6 p-4 text-sm">This form could not be loaded. Try again shortly.</p>
+    }
+    @case ('ready') {
+      <header class="mt-3 flex flex-wrap items-end gap-3">
+        <label class="min-w-64 flex-1">
+          <span class="text-xs font-medium text-muted">Form name</span>
+          <input data-testid="form-name" class="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-lg font-semibold"
+                 [value]="formName()" (input)="formName.set($any($event.target).value)" />
+        </label>
+        <p class="pb-2 font-mono text-xs text-muted">{{ key() }}</p>
+        <div class="ml-auto flex flex-wrap gap-2 pb-1">
+          <button type="button" data-testid="toggle-preview" class="btn btn-secondary px-3 py-1.5 text-sm"
+                  (click)="preview.set(!preview())">{{ preview() ? 'Back to editing' : 'Preview' }}</button>
+          <button type="button" data-testid="save" [disabled]="busy() !== null"
+                  class="btn btn-secondary px-3 py-1.5 text-sm" (click)="save()">Save draft</button>
+          <button type="button" data-testid="check" [disabled]="busy() !== null"
+                  class="btn btn-secondary px-3 py-1.5 text-sm" (click)="check()">Check</button>
+          <button type="button" data-testid="publish" [disabled]="busy() !== null"
+                  class="btn btn-primary px-3 py-1.5 text-sm" (click)="publish()">Publish</button>
+        </div>
+      </header>
+      <p class="mt-1 text-xs text-muted">
+        @switch (source()) {
+          @case ('draft') { {{ hasUnsavedChanges() ? 'Unsaved changes' : 'All changes saved to the draft' }} }
+          @case ('published') { Editing a copy of version {{ copiedVersion() }}; saving creates a draft. }
+          @case ('new') { A new form; save it to create the draft. }
+        }
+      </p>
+
+      @if (notice(); as message) {
+        <p class="mt-3 rounded-md bg-warn-soft p-3 text-sm text-warn-text">{{ message }}</p>
+      }
+      @if (problems(); as list) {
+        @if (list.length) {
+          <div class="alert-error mt-3 p-3 text-sm">
+            <p class="font-medium">Fix these before publishing:</p>
+            <ul class="mt-1 space-y-1">
+              @for (problem of list; track $index; let i = $index) {
+                <li>
+                  <button type="button" [attr.data-testid]="'problem-' + i" class="text-left link decoration-dotted"
+                          (click)="selectProblem(problem)">{{ problem.field ? problem.field + ': ' : '' }}{{ problem.message }}</button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      }
+
+      @if (preview()) {
+        <div class="mt-4 max-w-3xl">
+          <app-form-renderer [definition]="definition()" />
+        </div>
+      } @else {
+        <div class="mt-4 grid gap-4 lg:grid-cols-[11rem_minmax(0,1fr)_22rem]" cdkDropListGroup>
+          <aside aria-label="Field palette">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted">Add a field</p>
+            <div class="mt-2 grid grid-cols-2 gap-1 lg:grid-cols-1" data-testid="palette"
+                 cdkDropList cdkDropListSortingDisabled [cdkDropListEnterPredicate]="nothingDropsHere">
+              @for (item of palette; track item.type) {
+                <button type="button" [attr.data-testid]="'palette-' + item.type" cdkDrag [cdkDragData]="{ type: item.type }"
+                        class="cursor-grab rounded-md border border-line bg-surface px-2 py-1.5 text-left text-sm hover:bg-field"
+                        (click)="add(item.type)">{{ item.label }}</button>
+              }
+            </div>
+          </aside>
+
+          <app-design-canvas [definition]="definition()" [selected]="selected()" [targetSection]="targetSection()"
+                             [ruleIssues]="ruleIssues()" [problems]="problemList()"
+                             (fieldSelect)="select($event)" (fieldMove)="move($event.key, $event.direction)"
+                             (fieldRemove)="remove($event)" (sectionPick)="pickSection($event)"
+                             (sectionRename)="renameSection($event.id, $event.title)"
+                             (sectionColumns)="setColumns($event.id, $event.columns)"
+                             (sectionRemove)="dropSection($event)" (sectionAdd)="newSection()"
+                             (fieldAdd)="addAt($event.type, $event.section, $event.index)"
+                             (fieldPlace)="place($event.key, $event.section, $event.index)"
+                             (fieldSpan)="resize($event.key, $event.span)" />
+
+          <aside class="card p-4" aria-label="Field properties">
+            @if (selectedField(); as field) {
+              <app-field-properties [field]="field" [definition]="definition()" (change)="update($event)" />
+            } @else {
+              <p class="text-sm text-muted">Select a field to change its label, rules and options.</p>
+            }
+          </aside>
+        </div>
+      }
+    }
+  }
+</section>

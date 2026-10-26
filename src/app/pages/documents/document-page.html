@@ -1,0 +1,180 @@
+<section class="mx-auto max-w-6xl">
+  @switch (state()) {
+    @case ('loading') {
+      <p class="text-sm text-muted">Loading…</p>
+    }
+    @case ('missing') {
+      <div data-testid="missing" class="card p-6 text-sm text-ink">
+        This document does not exist or you do not have access to it.
+        <a routerLink="/documents" class="ml-2 link">Go to the library</a>
+      </div>
+    }
+    @case ('failed') {
+      <div class="alert-error p-4 text-sm">
+        The document could not be loaded. <button type="button" class="ml-2 link" (click)="load(id())">Retry</button>
+      </div>
+    }
+    @default {
+      @if (document(); as d) {
+        <div class="flex flex-wrap gap-4 text-sm text-muted">
+          @if (d.inLibrary) {
+            <a data-testid="folder-link" class="hover:underline" [routerLink]="['/documents/folders', d.folderId]">← Folder</a>
+          }
+          @if (d.linkedInstanceId) {
+            <a data-testid="request-link" class="hover:underline" [routerLink]="['/requests', d.linkedInstanceId]">Attached to a request →</a>
+          }
+        </div>
+
+        <header class="mt-1 flex flex-wrap items-center gap-3">
+          @if (renaming() !== null) {
+            <form class="flex gap-2" (submit)="$event.preventDefault(); saveRename()">
+              <input data-testid="rename-input" aria-label="Document name" class="rounded-md border border-line-strong px-2 py-1 text-lg"
+                     [value]="renaming()" (input)="renaming.set($any($event.target).value)" />
+              <button type="submit" data-testid="save-rename" class="btn btn-primary px-3 py-1 text-sm">Save</button>
+              <button type="button" class="text-sm link" (click)="renaming.set(null)">Cancel</button>
+            </form>
+          } @else {
+            <h1 data-testid="document-name" class="text-2xl font-semibold tracking-tight">{{ d.name }}</h1>
+            @if (isWritten()) {
+              <span data-testid="written-state" class="badge"
+                    [class.badge-ok]="d.state === 'APPROVED'"
+                    [class.badge-accent]="d.state === 'IN_APPROVAL' || d.state === 'REVISION'">{{ stateLabel() }}</span>
+            }
+            @if (canEdit()) {
+              <button type="button" data-testid="rename-document" class="text-sm link" (click)="renaming.set(d.name)">Rename</button>
+            }
+          }
+          @if (canWrite()) {
+            <a data-testid="edit-document" class="btn btn-primary px-3 py-1.5 text-sm" [routerLink]="['/documents', d.id, 'edit']">Edit</a>
+          }
+          @if (nothingToSend()) {
+            <span data-testid="send-hint" class="text-sm text-muted">Write something before sending this for approval.</span>
+          }
+          @if (canSend()) {
+            <button type="button" data-testid="send-for-approval" class="btn btn-secondary px-3 py-1.5 text-sm"
+                    (click)="sending.set(true)">Send for approval…</button>
+          }
+          @if (canDelete()) {
+            <button type="button" data-testid="delete-document" class="btn btn-danger ml-auto px-3 py-1.5 text-sm"
+                    (click)="remove()">Delete</button>
+          }
+        </header>
+
+        @if (sending() && canSend()) {
+          <app-send-for-approval [document]="d" (linked)="sent($event)" (closed)="sending.set(false)" />
+        }
+
+        <div data-testid="lock" class="card mt-3 flex flex-wrap items-center gap-3 p-3 text-sm">
+          @if (d.checkedOutBy) {
+            <span class="text-warn-text">
+              Checked out by {{ holder() ? 'you' : userName(d.checkedOutBy)() }} since {{ d.checkedOutAt | date: 'medium' }}
+            </span>
+          } @else {
+            <span class="text-muted">Not checked out.</span>
+          }
+          @if (canCheckOut()) {
+            <button type="button" data-testid="checkout" class="btn btn-primary px-3 py-1.5" (click)="checkout()">Check out</button>
+          }
+          @if (holder()) {
+            <button type="button" data-testid="cancel-checkout" class="btn btn-secondary px-3 py-1.5"
+                    (click)="cancelCheckout()">Cancel check-out</button>
+          }
+          @if (canRelease()) {
+            <button type="button" data-testid="release" class="btn btn-danger px-3 py-1.5"
+                    (click)="release()">Release</button>
+          }
+        </div>
+
+        @if (holder() && !isWritten()) {
+          <div class="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-line-strong bg-surface p-3 text-sm">
+            <label class="flex cursor-pointer items-center gap-2">
+              <span class="btn btn-primary px-3 py-1.5">Upload a new version</span>
+              <input type="file" data-testid="version-file" class="sr-only" (change)="chooseVersion($any($event.target))" />
+            </label>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" data-testid="version-major" [checked]="major()" (change)="major.set($any($event.target).checked)" />
+              Major version
+            </label>
+            <input data-testid="version-comment" aria-label="What changed" placeholder="What changed (optional)"
+                   class="min-w-0 flex-1 rounded-md border border-line-strong px-2 py-1"
+                   [value]="comment()" (input)="comment.set($any($event.target).value)" />
+            @if (versionUpload(); as u) {
+              @if (u.error) {
+                <span data-testid="version-error" class="w-full text-xs text-danger-text">{{ u.error }}</span>
+              } @else {
+                <span data-testid="version-status" class="text-muted">{{ u.status }}</span>
+              }
+            }
+          </div>
+        }
+
+        <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_24rem]">
+          <div>
+            @if (!inApproval() && previewed(); as v) {
+              <app-document-preview [documentId]="d.id" [version]="v" />
+            } @else if (inApproval()) {
+              <div class="card p-4">
+                <p data-testid="review-note" class="mb-3 text-sm text-muted">
+                  This is the text as it was sent for approval. It cannot be changed until the request finishes.
+                  <button type="button" data-testid="open-review" class="ml-1 link" (click)="openReview()">Open the whole review copy in a new tab</button>
+                </p>
+                @if (review(); as r) {
+                  <div data-testid="review" class="rounded-lg border border-line bg-field p-3">
+                    <app-pdf-viewer [url]="r.url" />
+                  </div>
+                } @else if (reviewFailed()) {
+                  <p data-testid="review-failed" class="text-sm text-danger-text">
+                    The review copy could not be loaded. <button type="button" class="ml-1 link" (click)="load(id())">Try again</button>
+                  </p>
+                } @else {
+                  <p class="text-sm text-muted">Loading the review copy…</p>
+                }
+              </div>
+            } @else if (isWritten()) {
+              <div class="card p-4">
+                @if (draft(); as text) {
+                  @if (text.html) {
+                    <div data-testid="draft-text" class="rich-text" [innerHTML]="text.html"></div>
+                  } @else {
+                    <p class="text-sm text-muted">Nothing has been written yet.</p>
+                  }
+                } @else {
+                  <p class="text-sm text-muted">Nothing has been written yet.</p>
+                }
+              </div>
+            } @else {
+              <p class="text-sm text-muted">This document has no file yet.</p>
+            }
+          </div>
+
+          <aside class="space-y-4">
+            <app-metadata-editor [document]="d" [editable]="canEdit()" (saved)="apply($event)" />
+            <div class="card">
+              <h2 class="border-b border-line px-3 py-2 text-sm font-semibold">Versions</h2>
+              <ul class="divide-y divide-line text-sm">
+                @for (v of d.versions; track v.id) {
+                  <li data-testid="version-row" class="px-3 py-2" [class.bg-accent-soft]="v.id === previewed()?.id">
+                    <div class="flex items-baseline gap-2">
+                      <span class="font-medium">{{ v.label }}</span>
+                      @if (isCurrent(v)) { <span class="rounded bg-ok-soft px-1 text-xs text-ok-text">current</span> }
+                      <span class="ml-auto text-xs text-muted">{{ formatSize(v.size) }}</span>
+                    </div>
+                    <div class="text-xs text-muted">{{ userName(v.createdBy)() }} · {{ v.createdAt | date: 'medium' }}</div>
+                    @if (v.comment) { <div class="text-xs text-ink">{{ v.comment }}</div> }
+                    <div class="mt-1 flex gap-3 text-xs">
+                      <button type="button" data-testid="preview-version" class="link" (click)="selected.set(v.id)">Preview</button>
+                      <button type="button" data-testid="download-version" class="link" (click)="download(v)">Download</button>
+                      @if (holder() && !isCurrent(v)) {
+                        <button type="button" data-testid="restore-version" class="link" (click)="restore(v)">Restore</button>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            </div>
+          </aside>
+        </div>
+      }
+    }
+  }
+</section>

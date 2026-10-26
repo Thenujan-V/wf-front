@@ -1,0 +1,64 @@
+<div class="space-y-2">
+  <label class="block">
+    <span class="text-xs font-medium text-muted">Form</span>
+    <select data-testid="form-key" class="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5 text-sm"
+            (change)="setKey($any($event.target).value)">
+      <option value="" [selected]="!formRef()">No form</option>
+      @if (unlistedKey(); as key) {
+        <option [value]="key" selected>{{ key }} (not available)</option>
+      }
+      @for (f of summaries(); track f.key) {
+        <option [value]="f.key" [selected]="f.key === formRef()?.key">{{ f.name }}</option>
+      }
+    </select>
+  </label>
+
+  @if (formRef(); as ref) {
+    <label class="block">
+      <span class="text-xs font-medium text-muted">Version</span>
+      <select data-testid="form-version" class="mt-1 block w-32 rounded-md border border-line-strong px-2 py-1.5 text-sm"
+              (change)="setVersion($any($event.target).value)">
+        @for (v of versions(); track v) {
+          <option [value]="v" [selected]="v === ref.version">{{ v }}</option>
+        }
+      </select>
+    </label>
+
+    @if (form() === 'missing') {
+      <p data-testid="form-missing" class="text-xs text-danger-text">
+        Version {{ ref.version }} of {{ ref.key }} is not available. Pick a published form or version.
+      </p>
+    }
+
+    @if (withAccess() && fields().length) {
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-muted"><th class="py-1 font-medium">Field</th><th class="py-1 font-medium">At this step</th></tr>
+        </thead>
+        <tbody>
+          @for (field of fields(); track field.key) {
+            <tr>
+              <td class="py-1 pr-2">{{ field.label }}</td>
+              <td class="py-1">
+                <select [attr.data-testid]="'access-' + field.key" [attr.aria-label]="'Access to ' + field.label"
+                        class="rounded border border-line-strong px-1 py-0.5" (change)="setAccess(field.key, $any($event.target).value)">
+                  @for (l of levels; track l.level) {
+                    <option [value]="l.level" [selected]="l.level === accessOf(field.key)">{{ l.label }}</option>
+                  }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+    @if (withAccess()) {
+      @for (key of staleKeys(); track key) {
+        <p class="flex items-center gap-2 text-xs text-warn-text">
+          The form has no field "{{ key }}" any more.
+          <button type="button" [attr.data-testid]="'access-stale-' + key" class="link" (click)="dropAccess(key)">Remove its setting</button>
+        </p>
+      }
+    }
+  }
+</div>

@@ -1,0 +1,68 @@
+<div class="card p-5">
+  <div class="flex items-start justify-between gap-2">
+    <h2 class="text-lg font-semibold">{{ task().name }}</h2>
+    <app-sla-badge [createdAt]="task().createdAt" [dueAt]="task().dueAt" />
+  </div>
+  <p class="mt-1 text-sm text-muted">
+    {{ task().processKey }}@if (task().businessKey) { · {{ task().businessKey }} } · requested by <app-user-name [userId]="task().initiatorId" />
+  </p>
+  <a class="mt-2 inline-block text-sm font-medium link" [routerLink]="['/requests', task().instanceId]">Open request</a>
+
+  @if (mine()) {
+    @if (task().formKey) {
+      <div class="mt-5">
+        @if (formDefinition(); as definition) {
+          <app-form-renderer [definition]="definition" [access]="formView()?.access ?? {}"
+                             [initial]="formView()?.values ?? {}" [serverErrors]="serverErrors()" />
+        } @else if (formFailed()) {
+          <p class="rounded-md bg-danger-soft p-3 text-sm text-danger-text">The task form could not be loaded. Try again shortly.</p>
+        } @else {
+          <p class="text-sm text-muted">Loading the form…</p>
+        }
+      </div>
+    }
+    <label class="mt-5 block text-sm font-medium text-ink" for="task-comment">Comment (optional)</label>
+    <textarea id="task-comment" rows="3" class="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
+              [value]="comment()" (input)="comment.set($any($event.target).value)"></textarea>
+
+    <div class="mt-3 flex flex-wrap gap-2">
+      @for (outcome of task().outcomes; track outcome) {
+        <button type="button" [attr.data-testid]="'outcome-' + outcome" [disabled]="working()" [attr.data-tone]="tone(outcome)"
+                class="btn px-4 py-2 text-sm" [class.btn-primary]="tone(outcome) === 'primary'"
+                [class.btn-secondary]="tone(outcome) === 'secondary'" [class.btn-danger]="tone(outcome) === 'danger'"
+                (click)="complete(outcome)">{{ humanize(outcome) }}</button>
+      }
+    </div>
+
+    <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+      <button type="button" data-testid="delegate" [disabled]="working()"
+              class="btn btn-secondary px-3 py-1.5 text-sm"
+              (click)="delegating.set(!delegating())">Delegate…</button>
+      @if (releasable()) {
+        <button type="button" data-testid="unclaim" [disabled]="working()"
+                class="btn btn-secondary px-3 py-1.5 text-sm"
+                (click)="unclaim()">Release to group</button>
+      }
+    </div>
+    @if (delegating()) {
+      <div class="mt-3">
+        <app-user-picker [excludeId]="me()" (picked)="delegate($event)" />
+      </div>
+    }
+  } @else if (claimable()) {
+    <p class="mt-5 text-sm text-muted">This task is offered to a group you belong to. Claim it to work on it.</p>
+    <button type="button" data-testid="claim" [disabled]="working()"
+            class="btn btn-primary mt-3 px-4 py-2 text-sm"
+            (click)="claim()">Claim</button>
+  } @else if (task().assigneeId) {
+    <p class="mt-5 text-sm text-muted">Assigned to <app-user-name [userId]="task().assigneeId" />.</p>
+  } @else {
+    <p class="mt-5 rounded-md bg-warn-soft p-3 text-sm text-warn-text">
+      Nobody could be assigned: {{ task().unassignedReason ?? 'no reason recorded' }}. An administrator can reassign it.
+    </p>
+  }
+
+  <div class="mt-5 border-t border-line pt-4">
+    <app-attachments [instanceId]="task().instanceId" />
+  </div>
+</div>

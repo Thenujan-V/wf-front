@@ -1,0 +1,391 @@
+/* Auradot Workflow: the app's look. Pages never name a raw colour; they use the tokens below, which have a light and
+   a dark value. See docs/superpowers/specs/2026-10-02-ui-redesign-design.md. */
+
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  --wms-bg: #f8f7f5;
+  --wms-surface: #ffffff;
+  --wms-field: #f4f2ee;
+  --wms-line: #ebe8e3;
+  --wms-line-strong: #d9d4cc;
+  --wms-ink: #23201c;
+  --wms-muted: #6f685d;
+  --wms-accent: #ea580c;
+  --wms-accent-hover: #dc4f08;
+  --wms-accent-soft: #fff1e6;
+  --wms-accent-text: #c2410c;
+  --wms-on-solid: #ffffff;
+  --wms-ok: #16a34a;
+  --wms-ok-soft: #e7f8ef;
+  --wms-ok-text: #15803d;
+  --wms-warn: #d97706;
+  --wms-warn-soft: #fef3c7;
+  --wms-warn-text: #92400e;
+  --wms-danger: #dc2626;
+  --wms-danger-soft: #fde8e8;
+  --wms-danger-text: #b91c1c;
+  --wms-shadow-card: 0 1px 2px rgb(40 30 20 / 0.06), 0 4px 12px rgb(40 30 20 / 0.04);
+  --wms-shadow-pop: 0 6px 24px rgb(40 30 20 / 0.14);
+  --wms-shadow-accent: 0 2px 6px rgb(234 88 12 / 0.3);
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --wms-bg: #171513;
+  --wms-surface: #211e1b;
+  --wms-field: #2a2622;
+  --wms-line: #34302b;
+  --wms-line-strong: #4a443d;
+  --wms-ink: #f1ede8;
+  --wms-muted: #a8a097;
+  /* The same orange as in light: a brighter one would put white button labels below the contrast the owner accepted. */
+  --wms-accent: #ea580c;
+  --wms-accent-hover: #dc4f08;
+  --wms-accent-soft: rgb(249 115 22 / 0.16);
+  --wms-accent-text: #fdba74;
+  --wms-ok: #22c55e;
+  --wms-ok-soft: rgb(34 197 94 / 0.16);
+  --wms-ok-text: #86efac;
+  --wms-warn: #f59e0b;
+  --wms-warn-soft: rgb(245 158 11 / 0.16);
+  --wms-warn-text: #fcd34d;
+  --wms-danger: #ef4444;
+  --wms-danger-soft: rgb(239 68 68 / 0.16);
+  --wms-danger-text: #fca5a5;
+  --wms-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --wms-shadow-pop: 0 8px 28px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+/* The process designer's canvas (@foblex/flow) has its own light and dark tokens, keyed on the same data-theme
+   attribute; only its accent is ours. */
+:root,
+[data-theme='dark'] {
+  --ff-color-accent: var(--wms-accent);
+  --ff-color-accent-strong: var(--wms-accent-hover);
+  --ff-color-border-accent: var(--wms-accent);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: var(--wms-bg);
+  --color-surface: var(--wms-surface);
+  --color-field: var(--wms-field);
+  --color-line: var(--wms-line);
+  --color-line-strong: var(--wms-line-strong);
+  --color-ink: var(--wms-ink);
+  --color-muted: var(--wms-muted);
+  --color-accent: var(--wms-accent);
+  --color-accent-hover: var(--wms-accent-hover);
+  --color-accent-soft: var(--wms-accent-soft);
+  --color-accent-text: var(--wms-accent-text);
+  --color-on-solid: var(--wms-on-solid);
+  --color-ok: var(--wms-ok);
+  --color-ok-soft: var(--wms-ok-soft);
+  --color-ok-text: var(--wms-ok-text);
+  --color-warn: var(--wms-warn);
+  --color-warn-soft: var(--wms-warn-soft);
+  --color-warn-text: var(--wms-warn-text);
+  --color-danger: var(--wms-danger);
+  --color-danger-soft: var(--wms-danger-soft);
+  --color-danger-text: var(--wms-danger-text);
+
+  --radius-md: 0.5625rem;
+  --radius-lg: 0.75rem;
+
+  --shadow-card: var(--wms-shadow-card);
+  --shadow-pop: var(--wms-shadow-pop);
+}
+
+@layer base {
+  body {
+    background-color: var(--wms-bg);
+    color: var(--wms-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']),
+  select,
+  textarea {
+    background-color: var(--wms-surface);
+    color: var(--wms-ink);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--wms-muted);
+    opacity: 0.8;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--wms-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--wms-accent);
+    outline-offset: 2px;
+  }
+
+  input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']):focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    /* The outline is the indicator: utilities set the border colour and would win over a border rule here. */
+    outline: 2px solid var(--wms-accent);
+    outline-offset: -1px;
+    box-shadow: 0 0 0 3px var(--wms-accent-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Buttons: padding and size stay with the template (px-…, py-…, text-…). */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The main action. White on bright orange is the owner's choice (see the spec, §9). */
+  .btn-primary {
+    background-color: var(--wms-accent);
+    color: var(--wms-on-solid);
+    font-weight: 700;
+    box-shadow: var(--wms-shadow-accent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--wms-accent-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--wms-surface);
+    color: var(--wms-ink);
+    border-color: var(--wms-line-strong);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--wms-field);
+  }
+
+  /* For what cannot be undone: cancel a request, delete, retire. */
+  .btn-danger {
+    background-color: var(--wms-surface);
+    color: var(--wms-danger-text);
+    border-color: var(--wms-danger);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background-color: var(--wms-danger-soft);
+  }
+
+  .card {
+    background-color: var(--wms-surface);
+    border: 1px solid var(--wms-line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--wms-shadow-card);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 9999px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background-color: var(--wms-field);
+    color: var(--wms-muted);
+  }
+
+  .badge-accent {
+    background-color: var(--wms-accent-soft);
+    color: var(--wms-accent-text);
+  }
+
+  .badge-ok {
+    background-color: var(--wms-ok-soft);
+    color: var(--wms-ok-text);
+  }
+
+  .badge-warn {
+    background-color: var(--wms-warn-soft);
+    color: var(--wms-warn-text);
+  }
+
+  .badge-danger {
+    background-color: var(--wms-danger-soft);
+    color: var(--wms-danger-text);
+  }
+
+  /* The text of a written document, in the editor and when shown read-only. */
+  .rich-text { outline: none; line-height: 1.6; color: var(--wms-ink); }
+  .rich-text .ProseMirror { outline: none; min-height: 14rem; }
+  .rich-text h1 { font-size: 1.5rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+  .rich-text h2 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+  .rich-text h3 { font-size: 1.05rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+  .rich-text p { margin: 0.5rem 0; }
+  .rich-text ul { list-style: disc; padding-left: 1.5rem; }
+  .rich-text ol { list-style: decimal; padding-left: 1.5rem; }
+  .rich-text blockquote { border-left: 3px solid var(--wms-line-strong); padding-left: 0.75rem; color: var(--wms-muted); }
+  .rich-text a { color: var(--wms-accent-text); text-decoration: underline; }
+  .rich-text table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
+  .rich-text th, .rich-text td { border: 1px solid var(--wms-line-strong); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+  .rich-text th { background-color: var(--wms-field); font-weight: 600; }
+  .rich-text hr { border: 0; border-top: 1px solid var(--wms-line-strong); margin: 1rem 0; }
+
+  /* One of a few: the chosen button says so with aria-pressed or aria-selected, and the style follows that. */
+  .segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 0.625rem;
+    background-color: var(--wms-field);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .segmented > button {
+    padding: 0.3rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--wms-muted);
+  }
+
+  .segmented > button[aria-pressed='true'],
+  .segmented > button[aria-selected='true'] {
+    background-color: var(--wms-surface);
+    color: var(--wms-ink);
+    box-shadow: var(--wms-shadow-card);
+  }
+
+  .link {
+    color: var(--wms-accent-text);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+
+  .alert-error {
+    border-radius: var(--radius-lg);
+    background-color: var(--wms-danger-soft);
+    color: var(--wms-danger-text);
+  }
+
+  .alert-error .link {
+    color: inherit;
+  }
+
+  .icon-button {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: var(--radius-md);
+    background-color: var(--wms-field);
+    color: var(--wms-muted);
+    cursor: pointer;
+  }
+
+  .icon-button:hover {
+    color: var(--wms-ink);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.45rem 0.625rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--wms-muted);
+  }
+
+  .nav-item:hover {
+    background-color: var(--wms-field);
+    color: var(--wms-ink);
+  }
+
+  .nav-item-active,
+  .nav-item-active:hover {
+    background-color: var(--wms-accent-soft);
+    color: var(--wms-accent-text);
+    font-weight: 600;
+  }
+
+  /* One line of the folder tree; the current folder looks like the current sidebar item. */
+  .tree-row {
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-md);
+    color: var(--wms-ink);
+  }
+
+  .tree-row:hover {
+    background-color: var(--wms-field);
+  }
+
+  .tree-row-current,
+  .tree-row-current:hover {
+    background-color: var(--wms-accent-soft);
+    color: var(--wms-accent-text);
+    font-weight: 600;
+  }
+
+
+  .nav-group {
+    margin: 0.9rem 0.625rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wms-muted);
+  }
+
+  /* Drag and drop (the form designer). The preview is the copy that follows the pointer; the placeholder marks
+     where it will land. */
+  .cdk-drag-preview {
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+    opacity: 0.92;
+  }
+  .cdk-drag-placeholder {
+    opacity: 0.35;
+  }
+  .cdk-drag-animating,
+  .cdk-drop-list-dragging .cdk-drag {
+    transition: transform 150ms ease;
+  }
+}
