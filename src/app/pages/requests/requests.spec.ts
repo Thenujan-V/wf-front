@@ -3,17 +3,21 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { EmbedService } from '../../core/embed/embed.service';
 import { problemInterceptor } from '../../core/http/problem.interceptor';
 import { ToastService } from '../../core/ui/toast.service';
 import { RequestsPage } from './requests';
 
 describe('RequestsPage', () => {
-  function setup() {
+  function setup(businessKey?: string) {
     TestBed.configureTestingModule({
       imports: [RequestsPage],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     });
     const fixture = TestBed.createComponent(RequestsPage);
+    if (businessKey) {
+      fixture.componentRef.setInput('businessKey', businessKey);
+    }
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const controller = TestBed.inject(HttpTestingController);
@@ -65,6 +69,47 @@ describe('RequestsPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/requests', 'new-1']);
     expect(TestBed.inject(ToastService).toasts().map((t) => t.message)).toEqual(['Request submitted']);
     controller.verify();
+  });
+
+  it('lists only the requests for a business key, e.g. one auraDOCS document', async () => {
+    const { fixture, element, controller, byTestId } = setup('auradocs-doc:42');
+    controller.expectOne('/api/workflow/catalog').flush([]);
+    controller.expectOne('/api/workflow/instances?businessKey=auradocs-doc:42').flush([{ ...summary, businessKey: 'auradocs-doc:42' }]);
+    await fixture.whenStable();
+
+    expect(byTestId('requests-heading').textContent).toContain('Requests for this document');
+    expect(element.querySelectorAll('[data-testid="request-row"]').length).toBe(1);
+    controller.verify();
+  });
+
+  it('says when a document has no requests yet', async () => {
+    const { fixture, element, controller } = setup('auradocs-doc:42');
+    controller.expectOne('/api/workflow/catalog').flush([]);
+    controller.expectOne('/api/workflow/instances?businessKey=auradocs-doc:42').flush([]);
+    await fixture.whenStable();
+
+    expect(element.textContent).toContain('No requests have been started for this document yet');
+  });
+
+  it('starts a request for the filtered key and tells the embedding page', async () => {
+    const { fixture, controller, byTestId } = setup('auradocs-doc:42');
+    controller.expectOne('/api/workflow/catalog').flush([{ key: 'expense-approval', name: 'Expense approval', version: 2, startForm: null }]);
+    controller.expectOne('/api/workflow/instances?businessKey=auradocs-doc:42').flush([]);
+    await fixture.whenStable();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const started = vi.spyOn(TestBed.inject(EmbedService), 'instanceStarted');
+
+    byTestId<HTMLButtonElement>('start-expense-approval').click();
+    await fixture.whenStable();
+    expect(byTestId<HTMLInputElement>('submit-request').form?.querySelector<HTMLInputElement>('#business-key')?.value).toBe('auradocs-doc:42');
+    byTestId<HTMLButtonElement>('submit-request').click();
+
+    const req = controller.expectOne({ method: 'POST', url: '/api/workflow/instances' });
+    expect(req.request.body.businessKey).toBe('auradocs-doc:42');
+    req.flush({ ...summary, id: 'new-3' });
+    await fixture.whenStable();
+
+    expect(started).toHaveBeenCalledWith('new-3');
   });
 
   it('explains invalid details instead of sending them', async () => {

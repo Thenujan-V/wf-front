@@ -1,8 +1,10 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { EmbedService } from '../../core/embed/embed.service';
 import { problemInterceptor } from '../../core/http/problem.interceptor';
 import { ToastService } from '../../core/ui/toast.service';
 import { NOW } from '../../core/workflow/clock';
@@ -13,6 +15,8 @@ import { Attachments } from '../documents/attachments';
 import { RequestDetailPage } from './request-detail';
 
 describe('RequestDetailPage', () => {
+  const openDocument = vi.fn();
+
   function setup(id = 'i1') {
     TestBed.configureTestingModule({
       imports: [RequestDetailPage],
@@ -22,6 +26,7 @@ describe('RequestDetailPage', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: { reauthenticate: () => false } },
         { provide: NOW, useValue: () => new Date('2026-09-29T09:00:00Z') },
+        { provide: EmbedService, useValue: { canOpenDocuments: signal(true), openDocument } },
       ],
     });
     TestBed.overrideComponent(RequestDetailPage, { remove: { imports: [Attachments] }, add: { imports: [AttachmentsStub] } });
@@ -71,6 +76,25 @@ describe('RequestDetailPage', () => {
     expect(events[1]).toContain('Receipts attached, fine');
     expect(element.querySelector('dl')?.textContent).not.toContain('comment_t1');
     controller.verify();
+  });
+
+  it('opens the auraDOCS document the request was started for', async () => {
+    const { fixture, controller, element } = setup();
+    controller.expectOne('/api/workflow/instances/i1').flush({ ...detail, variables: { form: { auradocsDocId: 42, amount: 1 } } });
+    controller.expectOne('/api/workflow/instances/i1/history').flush([]);
+    await fixture.whenStable();
+
+    (element.querySelector('[data-testid="open-document"]') as HTMLButtonElement).click();
+    expect(openDocument).toHaveBeenCalledWith('42');
+  });
+
+  it('offers no document link for requests without one', async () => {
+    const { fixture, controller, element } = setup();
+    controller.expectOne('/api/workflow/instances/i1').flush(detail);
+    controller.expectOne('/api/workflow/instances/i1/history').flush([]);
+    await fixture.whenStable();
+
+    expect(element.querySelector('[data-testid="open-document"]')).toBeNull();
   });
 
   it('shows a friendly state for requests you cannot see, without an error toast', async () => {

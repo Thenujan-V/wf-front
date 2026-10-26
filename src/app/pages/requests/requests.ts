@@ -1,10 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormRenderer } from '../../core/forms/form-renderer';
 import { FieldError, FormDefinition } from '../../core/forms/form.models';
 import { FormsApi } from '../../core/forms/forms.api';
+import { EmbedService } from '../../core/embed/embed.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { StatusBadge } from '../../core/workflow/status-badge';
 import { WorkflowApi } from '../../core/workflow/workflow.api';
@@ -21,10 +22,15 @@ export class RequestsPage {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
   private readonly formsApi = inject(FormsApi);
+  private readonly embed = inject(EmbedService);
   private readonly renderer = viewChild(FormRenderer);
   protected readonly startForm = signal<FormDefinition | null>(null);
   protected readonly formFailed = signal(false);
   protected readonly serverErrors = signal<FieldError[]>([]);
+
+  /** Query parameter ?businessKey=: only the requests for that key, e.g. one auraDOCS document. */
+  readonly filterKey = input<string | undefined>(undefined, { alias: 'businessKey' });
+  protected readonly forDocument = computed(() => this.filterKey()?.startsWith('auradocs-doc:') ?? false);
 
   protected readonly catalog = signal<CatalogEntry[] | null>(null);
   protected readonly requests = signal<InstanceSummary[] | null>(null);
@@ -39,12 +45,18 @@ export class RequestsPage {
   constructor() {
     // Load failures show on the page, so they are not toasted as well.
     this.api.catalog(true).subscribe({ next: (c) => this.catalog.set(c), error: () => this.failed.set(true) });
-    this.api.myRequests(true).subscribe({ next: (r) => this.requests.set(r), error: () => this.failed.set(true) });
+    effect(() => {
+      const key = this.filterKey() || undefined;
+      untracked(() => {
+        this.requests.set(null);
+        this.api.myRequests(true, key).subscribe({ next: (r) => this.requests.set(r), error: () => this.failed.set(true) });
+      });
+    });
   }
 
   protected open(entry: CatalogEntry): void {
     this.starting.set(entry);
-    this.businessKey.set('');
+    this.businessKey.set(this.filterKey() ?? '');
     this.rows.set([{ name: '', value: '' }]);
     this.errors.set([]);
     this.serverErrors.set([]);
@@ -102,6 +114,7 @@ export class RequestsPage {
       next: (started) => {
         this.submitting.set(false);
         this.toasts.success('Request submitted');
+        this.embed.instanceStarted(started.id);
         void this.router.navigate(['/requests', started.id]);
       },
       error: (error: unknown) => {

@@ -14,6 +14,21 @@ function readSession(key: string): string | null {
   }
 }
 
+/** Where the person was going, carried through the Keycloak redirect (e.g. a request opened inside auraDOCS). */
+function currentPath(): string {
+  return window.location.pathname + window.location.search;
+}
+
+/** Only a path inside the app is restored; the state comes back through the address bar. */
+function returnPath(state: string | undefined): string | null {
+  try {
+    const path = decodeURIComponent(state ?? '');
+    return path.startsWith('/') && !path.startsWith('//') ? path : null;
+  } catch {
+    return null;
+  }
+}
+
 function writeSession(key: string, value: string): void {
   try {
     sessionStorage.setItem(key, value);
@@ -47,10 +62,15 @@ export class AuthService {
         this.syncToken();
       }
     });
-    const signedIn = await this.oauth.loadDiscoveryDocumentAndLogin();
+    const signedIn = await this.oauth.loadDiscoveryDocumentAndLogin({ state: currentPath() });
     if (!signedIn) {
       // The browser is navigating to Keycloak; keep the app from rendering and firing API calls meanwhile.
       return new Promise<void>(() => undefined);
+    }
+    const path = returnPath(this.oauth.state);
+    if (path) {
+      // Before the router starts, so its first navigation is to the page the person asked for.
+      history.replaceState(null, '', path);
     }
     this.oauth.setupAutomaticSilentRefresh();
     this.syncToken();
@@ -80,7 +100,7 @@ export class AuthService {
       return false;
     }
     writeSession(REAUTH_KEY, String(now));
-    this.oauth.initCodeFlow();
+    this.oauth.initCodeFlow(currentPath());
     return true;
   }
 

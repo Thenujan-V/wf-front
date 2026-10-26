@@ -1,0 +1,6 @@
+{
+  "issuer": "http://localhost:8080/realms/auraDOCS",
+  "clientId": "wms-frontend",
+  "embedAllowedOrigins": ["http://localhost:4200"],
+  "auradocsViewerUrl": "http://localhost:4200/file-explorer?docId={docId}"
+}

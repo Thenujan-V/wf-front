@@ -48,6 +48,12 @@ export class ThemeService {
     this.apply();
   }
 
+  /** A theme set by the page embedding the app: followed for this visit, not remembered as the person's choice. */
+  use(theme: Theme): void {
+    this.chosen.set(theme);
+    this.apply();
+  }
+
   private apply(): void {
     this.document.documentElement.setAttribute('data-theme', this.theme());
   }

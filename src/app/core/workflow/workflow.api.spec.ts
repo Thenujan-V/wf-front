@@ -26,6 +26,12 @@ describe('WorkflowApi', () => {
     controller.expectOne('/api/workflow/instances').flush([]);
   });
 
+  it('filters requests by business key', () => {
+    api.myRequests(false, 'auradocs-doc:42').subscribe();
+
+    controller.expectOne('/api/workflow/instances?businessKey=auradocs-doc:42').flush([]);
+  });
+
   it('sends task actions to encoded task urls', () => {
     api.claim('t/1').subscribe();
     api.unclaim('t1').subscribe();

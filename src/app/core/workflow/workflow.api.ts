@@ -53,8 +53,10 @@ export class WorkflowApi {
     return this.http.post<InstanceSummary>(`${BASE}/instances`, request);
   }
 
-  myRequests(silent = false): Observable<InstanceSummary[]> {
-    return this.http.get<InstanceSummary[]>(`${BASE}/instances`, { context: context(silent) });
+  /** Requests I started; with a business key, every request for it that I can see. */
+  myRequests(silent = false, businessKey?: string): Observable<InstanceSummary[]> {
+    const params = businessKey ? { businessKey } : undefined;
+    return this.http.get<InstanceSummary[]>(`${BASE}/instances`, { params, context: context(silent) });
   }
 
   request(id: string, silent = false): Observable<InstanceDetail> {

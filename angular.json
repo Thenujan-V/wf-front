@@ -56,6 +56,14 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "auradocs": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "define": {
+                "WMS_CONFIG_URL": "\"/config.auradocs.json\""
+              }
             }
           },
           "defaultConfiguration": "production"
@@ -71,6 +79,10 @@
             },
             "development": {
               "buildTarget": "my-app:build:development"
+            },
+            "auradocs": {
+              "buildTarget": "my-app:build:auradocs",
+              "port": 4300
             }
           },
           "defaultConfiguration": "development"

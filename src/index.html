@@ -11,7 +11,12 @@
     // The theme is set before the first paint, so the page never flashes in the wrong one. ThemeService uses the
     // same key and the same rule.
     (function () {
-      var theme = null;
+      // A page embedding the app passes its own theme in the address (?theme=dark); it wins for this visit.
+      var theme = new URLSearchParams(window.location.search).get('theme');
+      if (theme === 'light' || theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+        return;
+      }
       try {
         theme = localStorage.getItem('wms.theme');
       } catch (e) {

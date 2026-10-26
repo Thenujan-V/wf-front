@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { EmbedService } from '../../core/embed/embed.service';
 import { fileNames } from '../../core/forms/form-values';
 import { UserName } from '../../core/identity/user-name';
 import { commentKey, isCommentKey } from '../../core/workflow/comments';
@@ -22,6 +23,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'failed';
 })
 export class RequestDetailPage {
   private readonly api = inject(WorkflowApi);
+  protected readonly embed = inject(EmbedService);
 
   /** Route parameter :id. */
   readonly id = input.required<string>();
@@ -34,6 +36,11 @@ export class RequestDetailPage {
   private readonly form = computed(() => {
     const form = this.detail()?.variables['form'];
     return form && typeof form === 'object' ? (form as Record<string, unknown>) : {};
+  });
+  /** The auraDOCS document the request was started for, kept with the start data or as its own variable. */
+  protected readonly docId = computed(() => {
+    const value = this.detail()?.variables['auradocsDocId'] ?? this.form()['auradocsDocId'];
+    return typeof value === 'string' || typeof value === 'number' ? String(value) || null : null;
   });
   /** What the requester submitted; approvers' comments are shown on the timeline instead. */
   protected readonly details = computed(() => Object.entries(this.form()).filter(([key]) => !isCommentKey(key)));

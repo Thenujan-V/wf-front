@@ -21,6 +21,12 @@
         <header class="mt-4 flex flex-wrap items-baseline gap-3">
           <h1 class="text-2xl font-semibold tracking-tight">{{ d.instance.processKey }}@if (d.instance.businessKey) { · {{ d.instance.businessKey }} }</h1>
           <app-status-badge [status]="d.instance.status" [endStatus]="d.instance.endStatus" />
+          @if (embed.canOpenDocuments() && docId(); as documentId) {
+            <button type="button" data-testid="open-document" class="btn btn-secondary ml-auto px-3 py-1.5 text-sm"
+                    (click)="embed.openDocument(documentId)">
+              Open document
+            </button>
+          }
         </header>
         <p class="mt-1 text-sm text-muted">
           Submitted by <app-user-name [userId]="d.instance.initiatorId" /> on {{ d.instance.startedAt | date: 'medium' }}

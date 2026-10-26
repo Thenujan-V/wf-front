@@ -2,6 +2,7 @@ import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
+import { EmbedService } from '../core/embed/embed.service';
 import { Icon } from '../core/ui/icon';
 import { IconName } from '../core/ui/icons';
 import { Logo } from '../core/ui/logo';
@@ -51,7 +52,10 @@ const NAV: NavGroup[] = [
   },
 ];
 
-/** The frame around every page: the menu, and a header with the theme, notifications and the person signed in. */
+/**
+ * The frame around every page: the menu, and a header with the theme, notifications and the person signed in.
+ * Embedded in auraDOCS, only the page itself: the page around the iframe has its own.
+ */
 @Component({
   selector: 'app-shell',
   imports: [Icon, Logo, NgTemplateOutlet, NotificationBell, RouterLink, RouterLinkActive, RouterOutlet, ThemeSwitch, UserMenu],
@@ -60,6 +64,7 @@ const NAV: NavGroup[] = [
 })
 export class Shell {
   protected readonly auth = inject(AuthService);
+  protected readonly embedded = inject(EmbedService).embedded;
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');

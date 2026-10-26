@@ -73,7 +73,14 @@
     </form>
   }
 
-  <h2 class="mt-8 text-lg font-semibold">My requests</h2>
+  <div class="mt-8 flex flex-wrap items-baseline gap-x-4">
+    <h2 class="text-lg font-semibold" data-testid="requests-heading">
+      @if (forDocument()) { Requests for this document } @else if (filterKey()) { Requests for {{ filterKey() }} } @else { My requests }
+    </h2>
+    @if (filterKey()) {
+      <a routerLink="/requests" class="text-sm link">All my requests</a>
+    }
+  </div>
   @if (requests(); as list) {
     <ul class="card mt-3 divide-y divide-line">
       @for (request of list; track request.id) {
@@ -85,7 +92,10 @@
           <app-status-badge [status]="request.status" [endStatus]="request.endStatus" />
         </li>
       } @empty {
-        <li class="px-4 py-8 text-center text-sm text-muted">You have not submitted any requests yet.</li>
+        <li class="px-4 py-8 text-center text-sm text-muted">
+          @if (filterKey()) { No requests have been started for this {{ forDocument() ? 'document' : 'reference' }} yet. }
+          @else { You have not submitted any requests yet. }
+        </li>
       }
     </ul>
   } @else if (!failed()) {

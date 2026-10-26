@@ -89,4 +89,28 @@ describe('AuthService', () => {
 
     expect(auth.userId()).toBe('user-123');
   });
+
+  it('returns to the page asked for after the Keycloak redirect', async () => {
+    history.replaceState(null, '', '/requests/7?embed=1');
+    const auth = TestBed.inject(AuthService);
+    (oauth['loadDiscoveryDocumentAndLogin'] as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      oauth['state'] = encodeURIComponent('/requests/7?embed=1');
+      history.replaceState(null, '', '/');
+      return true;
+    });
+    await auth.init();
+
+    expect(oauth['loadDiscoveryDocumentAndLogin']).toHaveBeenCalledWith({ state: '/requests/7?embed=1' });
+    expect(window.location.pathname + window.location.search).toBe('/requests/7?embed=1');
+    history.replaceState(null, '', '/');
+  });
+
+  it('does not follow a returned state that leaves the app', async () => {
+    oauth['state'] = encodeURIComponent('//evil.example/x');
+    const replace = vi.spyOn(history, 'replaceState');
+    await TestBed.inject(AuthService).init();
+
+    expect(replace).not.toHaveBeenCalled();
+    replace.mockRestore();
+  });
 });
