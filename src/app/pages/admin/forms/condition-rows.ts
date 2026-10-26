@@ -12,6 +12,35 @@ export interface RuleModel {
   rows: RuleRow[];
 }
 
+/** A field the rule may use, optionally listed under a heading in the field picker. */
+export type RuleField = FormField & { group?: string };
+
+/** The kinds of value a hand-named field (one no form lists) can hold. */
+export type CustomType = 'number' | 'text' | 'date' | 'checkbox';
+
+export const CUSTOM_TYPES: { type: CustomType; label: string }[] = [
+  { type: 'number', label: 'Number' },
+  { type: 'text', label: 'Text' },
+  { type: 'date', label: 'Date' },
+  { type: 'checkbox', label: 'Yes / no' },
+];
+
+/** A stand-in field for a hand-named variable, so it gets the operators and value input of its type. */
+export function customField(key: string, type: CustomType): FormField {
+  return { key, label: key, type };
+}
+
+/** The type a saved condition on a hand-named field was built with, read back from its comparison and value. */
+export function customTypeOf(row: RuleRow): CustomType {
+  if (typeof row.value === 'number' || row.op === 'gt' || row.op === 'gte' || row.op === 'lt' || row.op === 'lte') {
+    return 'number';
+  }
+  if (typeof row.value === 'boolean') {
+    return 'checkbox';
+  }
+  return row.op === 'before' || row.op === 'after' ? 'date' : 'text';
+}
+
 export type ReadRule = { kind: 'none' } | { kind: 'rows'; model: RuleModel } | { kind: 'advanced' };
 
 const LABELS: Record<Operator, string> = {
@@ -20,12 +49,15 @@ const LABELS: Record<Operator, string> = {
   before: 'is before', after: 'is after',
 };
 
-/** A rule the builder can edit: one comparison, or all/any of a flat list of comparisons on form fields. */
-export function readRule(condition: unknown): ReadRule {
+/**
+ * A rule the builder can edit: one comparison, or all/any of a flat list of comparisons.
+ * Row fields are variable paths with the prefix taken off: form field keys by default, or full paths with prefix ''.
+ */
+export function readRule(condition: unknown, prefix = 'form.'): ReadRule {
   if (condition === undefined || condition === null) {
     return { kind: 'none' };
   }
-  const single = toRow(condition);
+  const single = toRow(condition, prefix);
   if (single) {
     return { kind: 'rows', model: { mode: 'all', rows: [single] } };
   }
@@ -34,7 +66,7 @@ export function readRule(condition: unknown): ReadRule {
     const mode = keys.length === 1 && (keys[0] === 'all' || keys[0] === 'any') ? keys[0] : null;
     const list = mode ? (condition as Record<string, unknown>)[mode] : null;
     if (mode && Array.isArray(list) && list.length > 0) {
-      const rows = list.map(toRow);
+      const rows = list.map((item) => toRow(item, prefix));
       if (rows.every((row): row is RuleRow => row !== null)) {
         return { kind: 'rows', model: { mode, rows } };
       }
@@ -43,9 +75,9 @@ export function readRule(condition: unknown): ReadRule {
   return { kind: 'advanced' };
 }
 
-export function writeRule(model: RuleModel): unknown {
+export function writeRule(model: RuleModel, prefix = 'form.'): unknown {
   const compares = model.rows.map((row) =>
-    needsValue(row.op) ? { var: `form.${row.field}`, op: row.op, value: row.value } : { var: `form.${row.field}`, op: row.op });
+    needsValue(row.op) ? { var: `${prefix}${row.field}`, op: row.op, value: row.value } : { var: `${prefix}${row.field}`, op: row.op });
   if (compares.length === 0) {
     return undefined;
   }
@@ -105,7 +137,7 @@ export function defaultValue(field: FormField | undefined, op: Operator): unknow
   }
 }
 
-function toRow(node: unknown): RuleRow | null {
+function toRow(node: unknown, prefix: string): RuleRow | null {
   if (typeof node !== 'object' || node === null || Array.isArray(node)) {
     return null;
   }
@@ -113,11 +145,12 @@ function toRow(node: unknown): RuleRow | null {
   if (!Object.keys(compare).every((k) => k === 'var' || k === 'op' || k === 'value')) {
     return null;
   }
-  if (typeof compare['var'] !== 'string' || !compare['var'].startsWith('form.') || typeof compare['op'] !== 'string'
-    || !(compare['op'] in LABELS)) {
+  const variable = compare['var'];
+  if (typeof variable !== 'string' || !variable.startsWith(prefix) || variable.length === prefix.length
+    || typeof compare['op'] !== 'string' || !(compare['op'] in LABELS)) {
     return null;
   }
-  const row: RuleRow = { field: compare['var'].slice('form.'.length), op: compare['op'] as Operator };
+  const row: RuleRow = { field: variable.slice(prefix.length), op: compare['op'] as Operator };
   if ('value' in compare) {
     row.value = compare['value'];
   }

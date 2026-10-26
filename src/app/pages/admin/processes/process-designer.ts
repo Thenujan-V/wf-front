@@ -12,7 +12,7 @@ import { EdgePatch, EdgeProperties } from './edge-properties';
 import { FormCatalog } from './form-catalog';
 import { NodeProperties } from './node-properties';
 import { Connection, NodeMove, ProcessCanvas, Reconnection } from './process-canvas';
-import { conditionFields, variablesOfType } from './process-fields';
+import { processConditionVariables, variablesOfType } from './process-fields';
 import {
   EdgeResult, OutcomeResult, addNode, addOutcome, connect, emptyGraph, moveNodes, paletteFor, problemNodeIds, reconnect,
   removeEdge, removeNode, removeOutcome, renameOutcome, updateEdge, updateNode, withLayout,
@@ -77,7 +77,7 @@ export class ProcessDesignerPage {
     const form = this.catalog.form(n.form.key, n.form.version)();
     return typeof form === 'object' ? [form] : [];
   }));
-  protected readonly ruleFields = computed(() => conditionFields(this.usedForms()));
+  protected readonly ruleFields = computed(() => processConditionVariables(this.graph(), this.usedForms()));
   protected readonly userVariables = computed(() => variablesOfType(this.usedForms(), ['user']));
   protected readonly dateVariables = computed(() => variablesOfType(this.usedForms(), ['date', 'datetime']));
 
@@ -237,6 +237,11 @@ export class ProcessDesignerPage {
     if (edge) {
       this.graph.set(updateEdge(this.graph(), edge.id, patch));
     }
+  }
+
+  /** A flow changed from its source step's panel, such as a decision's condition setters. */
+  protected patchEdgeById(change: { id: string; patch: EdgePatch }): void {
+    this.graph.set(updateEdge(this.graph(), change.id, change.patch));
   }
 
   protected removeSelectedEdge(): void {

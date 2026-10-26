@@ -1,13 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { FormField } from '../../../core/forms/form.models';
 import { ProcessEdge, ProcessNode } from '../../../core/workflow/process.models';
+import { RuleField } from '../forms/condition-rows';
 import { EdgeProperties } from './edge-properties';
 
 describe('EdgeProperties', () => {
   const task: ProcessNode = { id: 'task1', type: 'USER_TASK', name: 'Approve', outcomes: ['APPROVE', 'REJECT'] };
   const decision: ProcessNode = { id: 'decision1', type: 'EXCLUSIVE_GATEWAY', name: 'Large?' };
   const end: ProcessNode = { id: 'end', type: 'END', name: 'Done' };
-  const fields: FormField[] = [{ key: 'amount', type: 'currency', label: 'Amount' }];
+  const fields: RuleField[] = [
+    { key: 'form.amount', type: 'currency', label: 'Amount', group: 'Form fields' },
+    { key: 'nodes.task1.outcome', type: 'select', label: 'Approve outcome', group: 'Task results',
+      options: [{ value: 'APPROVE', label: 'APPROVE' }, { value: 'REJECT', label: 'REJECT' }] },
+  ];
 
   function setup(edge: ProcessEdge, source: ProcessNode) {
     const fixture = TestBed.createComponent(EdgeProperties);
@@ -44,6 +48,32 @@ describe('EdgeProperties', () => {
     const s = setup({ id: 'f1', source: 'decision1', target: 'end' }, decision);
     s.el<HTMLButtonElement>('rule-add').click();
     expect(s.patches.at(-1)).toEqual({ condition: { var: 'form.amount', op: 'eq', value: 0 } });
+  });
+
+  it('builds a condition on a task outcome from dropdowns', () => {
+    const s = setup({ id: 'f1', source: 'decision1', target: 'end' }, decision);
+    s.el<HTMLButtonElement>('rule-add').click();
+    s.fixture.componentRef.setInput('edge', { id: 'f1', source: 'decision1', target: 'end', condition: s.patches.at(-1)!.condition });
+    s.fixture.detectChanges();
+    const field = s.el<HTMLSelectElement>('rule-field');
+    expect(Array.from(field.querySelectorAll('optgroup')).map((g) => g.label)).toEqual(['Form fields', 'Task results']);
+    field.value = 'nodes.task1.outcome';
+    field.dispatchEvent(new Event('change'));
+    expect(s.patches.at(-1)).toEqual({ condition: { var: 'nodes.task1.outcome', op: 'eq', value: 'APPROVE' } });
+  });
+
+  it('offers a field typed by name, such as amount, at the top of the field list and as its own button', () => {
+    const s = setup({ id: 'f1', source: 'decision1', target: 'end' }, decision);
+    s.el<HTMLButtonElement>('rule-add-custom').click();
+    expect(s.patches.at(-1)).toEqual({ condition: { var: 'form.amount', op: 'eq', value: 0 } });
+    s.fixture.componentRef.setInput('edge', { id: 'f1', source: 'decision1', target: 'end', condition: { var: 'form.contractValue', op: 'gt', value: 5 } });
+    s.fixture.detectChanges();
+    expect(s.el<HTMLInputElement>('rule-custom-name').value).toBe('contractValue');
+    expect(s.el<HTMLSelectElement>('rule-custom-type').value).toBe('number');
+
+    s.fixture.componentRef.setInput('edge', { id: 'f1', source: 'decision1', target: 'end', condition: { var: 'nodes.task1.outcome', op: 'eq', value: 'APPROVE' } });
+    s.fixture.detectChanges();
+    expect(s.el<HTMLSelectElement>('rule-field').options[0].textContent).toContain('Type a field name');
   });
 
   it('edits a condition as JSON, refusing text that is not a rule', async () => {

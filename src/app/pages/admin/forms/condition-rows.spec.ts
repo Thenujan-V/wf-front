@@ -1,5 +1,5 @@
 import { FormField } from '../../../core/forms/form.models';
-import { defaultValue, needsValue, operatorsFor, readRule, writeRule } from './condition-rows';
+import { customTypeOf, defaultValue, needsValue, operatorsFor, readRule, writeRule } from './condition-rows';
 
 const amount: FormField = { key: 'amount', type: 'currency', label: 'Amount' };
 const agree: FormField = { key: 'agree', type: 'checkbox', label: 'Agree' };
@@ -27,6 +27,25 @@ describe('condition rows', () => {
       .toEqual({ var: 'form.amount', op: 'isNotEmpty' });
     expect(writeRule({ mode: 'any', rows: [{ field: 'amount', op: 'gt', value: 5 }, { field: 'agree', op: 'eq', value: true }] }))
       .toEqual({ any: [{ var: 'form.amount', op: 'gt', value: 5 }, { var: 'form.agree', op: 'eq', value: true }] });
+  });
+
+  it('reads and writes full variable paths with an empty prefix', () => {
+    const outcome = { var: 'nodes.task1.outcome', op: 'eq', value: 'APPROVE' };
+    const department = { var: 'requester.department', op: 'eq', value: 'Legal' };
+    const read = readRule({ all: [outcome, department] }, '');
+    expect(read).toEqual({ kind: 'rows', model: { mode: 'all', rows: [
+      { field: 'nodes.task1.outcome', op: 'eq', value: 'APPROVE' }, { field: 'requester.department', op: 'eq', value: 'Legal' }] } });
+    expect(writeRule(read.kind === 'rows' ? read.model : { mode: 'all', rows: [] }, '')).toEqual({ all: [outcome, department] });
+    expect(readRule({ var: 'form.amount', op: 'gt', value: 1 }, ''))
+      .toEqual({ kind: 'rows', model: { mode: 'all', rows: [{ field: 'form.amount', op: 'gt', value: 1 }] } });
+  });
+
+  it('reads back the type of a hand-named field from its comparison', () => {
+    expect(customTypeOf({ field: 'form.amount', op: 'gt', value: 5 })).toBe('number');
+    expect(customTypeOf({ field: 'form.amount', op: 'eq', value: 0 })).toBe('number');
+    expect(customTypeOf({ field: 'form.urgent', op: 'eq', value: true })).toBe('checkbox');
+    expect(customTypeOf({ field: 'form.due', op: 'before', value: '2026-01-01' })).toBe('date');
+    expect(customTypeOf({ field: 'form.note', op: 'contains', value: 'x' })).toBe('text');
   });
 
   it('offers operators and starting values that fit the field', () => {

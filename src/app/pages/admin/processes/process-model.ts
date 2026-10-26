@@ -318,8 +318,8 @@ export function problemNodeIds(problems: ValidationProblem[] | null): ReadonlySe
   return new Set((problems ?? []).map((p) => p.nodeId).filter((id): id is string => !!id));
 }
 
-/** The short text drawn on a flow. */
-export function edgeLabel(edge: ProcessEdge): string {
+/** The short text drawn on a flow; node names (by id) let a task-outcome condition name its task. */
+export function edgeLabel(edge: ProcessEdge, nodeNames: Record<string, string> = {}): string {
   if (edge.outcome) {
     return edge.outcome;
   }
@@ -329,7 +329,7 @@ export function edgeLabel(edge: ProcessEdge): string {
   if (edge.condition === undefined || edge.condition === null) {
     return '';
   }
-  const read = readRule(edge.condition);
+  const read = readRule(edge.condition, '');
   if (read.kind !== 'rows') {
     return 'if (custom rule)';
   }
@@ -339,7 +339,22 @@ export function edgeLabel(edge: ProcessEdge): string {
   }
   const row = rows[0];
   const value = needsValue(row.op) ? ` ${Array.isArray(row.value) ? row.value.join(', ') : String(row.value)}` : '';
-  return `if ${row.field} ${operatorLabel(row.op)}${value}`;
+  return `if ${variableLabel(row.field, nodeNames)} ${operatorLabel(row.op)}${value}`;
+}
+
+/** form.amount → amount, nodes.task1.outcome → "<task name> outcome", requester.department → requester department. */
+function variableLabel(variable: string, nodeNames: Record<string, string>): string {
+  if (variable.startsWith('form.')) {
+    return variable.slice('form.'.length);
+  }
+  const outcome = /^nodes\.(.+)\.outcome$/.exec(variable);
+  if (outcome) {
+    return `${nodeNames[outcome[1]] || outcome[1]} outcome`;
+  }
+  if (variable.startsWith('requester.')) {
+    return `requester ${variable.slice('requester.'.length)}`;
+  }
+  return variable;
 }
 
 /** A copy without the properties whose value is undefined, so saved JSON has no empty settings. */

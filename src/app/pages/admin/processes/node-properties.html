@@ -42,7 +42,32 @@
     }
     @case ('EXCLUSIVE_GATEWAY') {
       <p class="text-sm text-muted">Give each flow leaving this decision a condition. The default flow is taken when no condition holds.</p>
-      <ng-container *ngTemplateOutlet="flowsOut; context: { empty: 'Connect this decision to the next steps, then set a condition on each flow.', pending: 'no condition yet' }" />
+      <div class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-muted">Flows out</p>
+        @for (edge of outgoing(); track edge.id) {
+          <div class="space-y-2 rounded-md border border-line p-2" [attr.data-testid]="'decision-flow-' + edge.id">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-medium">To {{ nodeNames()[edge.target] ?? edge.target }}</span>
+              <button type="button" [attr.data-testid]="'prop-flow-' + edge.id" class="text-xs link" (click)="edgeOpen.emit(edge.id)">Open flow</button>
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" [attr.data-testid]="'decision-default-' + edge.id" [checked]="!!edge.default"
+                     (change)="setDefault(edge.id, $any($event.target).checked)" />
+              Default flow (otherwise)
+            </label>
+            @if (!edge.default) {
+              <app-condition-editor label="Take this flow when" [testId]="'flow-' + edge.id" prefix="" [fields]="conditionVariables()"
+                                    [condition]="edge.condition" [allowCustom]="true"
+                                    (conditionChange)="edgePatch.emit({ id: edge.id, patch: { condition: $event } })" />
+            }
+          </div>
+        } @empty {
+          <p class="text-sm text-muted">Connect this decision to the next steps, then set a condition on each flow.</p>
+        }
+        @if (outgoing().length && !hasDefault()) {
+          <p data-testid="decision-no-default" class="text-xs text-warn-text">Mark one flow as the default: it is taken when no condition holds, and a decision can't be published without one.</p>
+        }
+      </div>
     }
     @case ('PARALLEL_GATEWAY') {
       <p class="text-sm text-muted">With several flows out, it starts them all at once. With several flows in, it waits for all of them. Every split needs a matching join.</p>

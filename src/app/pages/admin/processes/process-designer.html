@@ -64,6 +64,7 @@
         @if (selectedNode(); as node) {
           <app-node-properties [node]="node" [userVariables]="userVariables()" [dateVariables]="dateVariables()"
                                [outgoing]="selectedOutgoing()" [incoming]="selectedIncoming()" [nodeNames]="nodeNames()"
+                               [conditionVariables]="ruleFields()" (edgePatch)="patchEdgeById($event)"
                                (edgeOpen)="openEdge($event)"
                                (patch)="patchNode($event)" (outcomeAdd)="addOutcome($event)" (outcomeRename)="renameOutcome($event)"
                                (outcomeRemove)="removeOutcome($event)" (remove)="removeSelectedNode()" />

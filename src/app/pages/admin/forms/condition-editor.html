@@ -16,21 +16,48 @@
         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs" data-testid="rule-row">
           <select data-testid="rule-field" aria-label="Field" class="rounded border border-line-strong px-2 py-1"
                   (change)="setField(i, $any($event.target).value)">
-            @if (!fieldOf(r.field)) {
-              <option value="" selected disabled>(not above this field: {{ r.field }})</option>
+            @if (isCustom(r)) {
+              <option [value]="customField" selected>Field by name</option>
+            } @else {
+              @if (!fieldOf(r)) {
+                <option value="" selected disabled>(not above this field: {{ r.field }})</option>
+              }
+              @if (allowCustom()) {
+                <option [value]="customField">Type a field name (e.g. amount)…</option>
+              }
             }
-            @for (f of fields(); track f.key) {
-              <option [value]="f.key" [selected]="f.key === r.field">{{ f.label }}</option>
+            @for (g of groups(); track g.name) {
+              @if (g.name) {
+                <optgroup [label]="g.name">
+                  @for (f of g.fields; track f.key) {
+                    <option [value]="f.key" [selected]="f.key === r.field">{{ f.label }}</option>
+                  }
+                </optgroup>
+              } @else {
+                @for (f of g.fields; track f.key) {
+                  <option [value]="f.key" [selected]="f.key === r.field">{{ f.label }}</option>
+                }
+              }
             }
           </select>
+          @if (isCustom(r)) {
+            <input data-testid="rule-custom-name" aria-label="Field name" placeholder="amount" class="w-28 rounded border border-line-strong px-2 py-1 font-mono"
+                   [value]="customName(r)" (change)="setCustomName(i, $any($event.target).value)" />
+            <select data-testid="rule-custom-type" aria-label="Field type" class="rounded border border-line-strong px-2 py-1"
+                    (change)="setCustomType(i, $any($event.target).value)">
+              @for (t of customTypes; track t.type) {
+                <option [value]="t.type" [selected]="t.type === customType(r)">{{ t.label }}</option>
+              }
+            </select>
+          }
           <select data-testid="rule-op" aria-label="Comparison" class="rounded border border-line-strong px-2 py-1"
                   (change)="setOp(i, $any($event.target).value)">
-            @for (o of operators(r.field); track o.op) {
+            @for (o of operators(r); track o.op) {
               <option [value]="o.op" [selected]="o.op === r.op">{{ o.label }}</option>
             }
           </select>
           @if (needsValue(r.op)) {
-            @switch (valueKind(r.field)) {
+            @switch (valueKind(r)) {
               @case ('boolean') {
                 <select data-testid="rule-value" aria-label="Value" class="rounded border border-line-strong px-2 py-1"
                         (change)="setValue(i, $any($event.target).value === 'true')">
@@ -41,10 +68,10 @@
               @case ('options') {
                 <select data-testid="rule-value" aria-label="Value" class="rounded border border-line-strong px-2 py-1"
                         (change)="setValue(i, $any($event.target).value)">
-                  @if (!hasOption(r.field, r.value)) {
+                  @if (!hasOption(r)) {
                     <option value="" selected disabled>(no longer an option: {{ text(r.value) }})</option>
                   }
-                  @for (o of optionsOf(r.field); track o.value) {
+                  @for (o of optionsOf(r); track o.value) {
                     <option [value]="o.value" [selected]="o.value === r.value">{{ o.label }}</option>
                   }
                 </select>
@@ -69,10 +96,15 @@
     } @else {
       <p class="mt-1 text-xs text-muted">Always.</p>
     }
-    @if (fields().length) {
-      <button type="button" data-testid="rule-add" class="mt-2 text-xs link" (click)="add()">Add a condition</button>
+    @if (fields().length || allowCustom()) {
+      <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        <button type="button" data-testid="rule-add" class="text-xs link" (click)="add()">Add a condition</button>
+        @if (allowCustom()) {
+          <button type="button" data-testid="rule-add-custom" class="text-xs link" (click)="addCustom()">Add a condition on a field by name (e.g. amount)</button>
+        }
+      </div>
     } @else {
-      <p class="mt-1 text-xs text-muted">Rules can only use fields above this one, and there are none yet.</p>
+      <p class="mt-1 text-xs text-muted">{{ emptyHint() }}</p>
     }
   }
 </div>

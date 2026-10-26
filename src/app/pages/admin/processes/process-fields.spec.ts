@@ -1,5 +1,6 @@
 import { PublishedForm } from '../../../core/forms/form.models';
-import { conditionFields, inputFields, variablesOfType } from './process-fields';
+import { ProcessGraph } from '../../../core/workflow/process.models';
+import { conditionFields, inputFields, processConditionVariables, variablesOfType } from './process-fields';
 
 const claim: PublishedForm = {
   key: 'expense-claim', version: 1, name: 'Expense claim', status: 'PUBLISHED',
@@ -31,5 +32,32 @@ describe('process fields', () => {
 
   it('lists the input fields of one form', () => {
     expect(inputFields(claim).map((f) => f.key)).toEqual(['amount', 'approver', 'due']);
+  });
+
+  it('offers task outcomes, form fields, the requester and set values to decisions, by full variable path', () => {
+    const graph: ProcessGraph = { nodes: [
+      { id: 'start', type: 'START', name: 'Start' },
+      { id: 'task1', type: 'USER_TASK', name: 'Legal review', outcomes: ['APPROVE', 'REJECT'] },
+      { id: 'task2', type: 'USER_TASK', name: 'No outcomes yet' },
+      { id: 'act1', type: 'SYSTEM_ACTION', name: 'Mark', actionType: 'SET_VARIABLE', config: { variable: 'status.paid', value: true } },
+    ], edges: [] };
+    const variables = processConditionVariables(graph, [review]);
+    expect(variables.map((v) => `${v.group}|${v.key}`)).toEqual([
+      'Task results|nodes.task1.outcome',
+      'Form fields|form.amount', 'Form fields|form.paidAt',
+      'Requester|requester.department', 'Requester|requester.position', 'Requester|requester.username', 'Requester|requester.email',
+      'Set values|status.paid',
+    ]);
+    expect(variables[0]).toEqual(expect.objectContaining({ label: 'Legal review outcome', type: 'select',
+      options: [{ value: 'APPROVE', label: 'APPROVE' }, { value: 'REJECT', label: 'REJECT' }] }));
+  });
+
+  it('tells apart tasks that share a name', () => {
+    const graph: ProcessGraph = { nodes: [
+      { id: 'task1', type: 'USER_TASK', name: 'New task', outcomes: ['DONE'] },
+      { id: 'task2', type: 'USER_TASK', name: 'New task', outcomes: ['DONE'] },
+    ], edges: [] };
+    expect(processConditionVariables(graph, []).slice(0, 2).map((v) => v.label))
+      .toEqual(['New task (task1) outcome', 'New task (task2) outcome']);
   });
 });

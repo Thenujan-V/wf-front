@@ -208,6 +208,10 @@ describe('process model', () => {
     expect(edgeLabel({ id: 'a', source: 's', target: 't',
       condition: { any: [{ var: 'form.a', op: 'isEmpty' }, { var: 'form.b', op: 'isEmpty' }] } })).toBe('if any of 2 conditions');
     expect(edgeLabel({ id: 'a', source: 's', target: 't', condition: { var: 'requester.department', op: 'eq', value: 'X' } }))
+      .toBe('if requester department is X');
+    expect(edgeLabel({ id: 'a', source: 's', target: 't', condition: { var: 'nodes.task1.outcome', op: 'eq', value: 'APPROVE' } },
+      { task1: 'Legal review' })).toBe('if Legal review outcome is APPROVE');
+    expect(edgeLabel({ id: 'a', source: 's', target: 't', condition: { not: { var: 'form.a', op: 'isEmpty' } } }))
       .toBe('if (custom rule)');
     expect(edgeLabel({ id: 'a', source: 's', target: 't' })).toBe('');
   });

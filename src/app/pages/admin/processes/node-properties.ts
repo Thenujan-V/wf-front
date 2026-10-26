@@ -1,7 +1,10 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { ActionType, NodeFormRef, ProcessEdge, ProcessNode } from '../../../core/workflow/process.models';
+import { ConditionEditor } from '../forms/condition-editor';
+import { RuleField } from '../forms/condition-rows';
 import { DurationInput } from './duration-input';
+import { EdgePatch } from './edge-properties';
 import { FormSettings } from './form-settings';
 import { edgeLabel, typeLabel } from './process-model';
 import { TaskProperties } from './task-properties';
@@ -26,7 +29,7 @@ export function parseValue(text: string): unknown {
 /** The settings of the selected node (spec §4.2). */
 @Component({
   selector: 'app-node-properties',
-  imports: [DurationInput, FormSettings, NgTemplateOutlet, TaskProperties],
+  imports: [ConditionEditor, DurationInput, FormSettings, NgTemplateOutlet, TaskProperties],
   templateUrl: './node-properties.html',
 })
 export class NodeProperties {
@@ -38,7 +41,11 @@ export class NodeProperties {
   readonly incoming = input<ProcessEdge[]>([]);
   /** Node names by id, to say where each flow goes. */
   readonly nodeNames = input<Record<string, string>>({});
+  /** What a decision's conditions can test (full variable paths), for the setters on each flow out. */
+  readonly conditionVariables = input<RuleField[]>([]);
   readonly patch = output<Partial<ProcessNode>>();
+  /** A change to one of the flows out, made from a decision's condition setters. */
+  readonly edgePatch = output<{ id: string; patch: EdgePatch }>();
   readonly outcomeAdd = output<string>();
   readonly outcomeRename = output<{ from: string; to: string }>();
   readonly outcomeRemove = output<string>();
@@ -49,6 +56,7 @@ export class NodeProperties {
   protected readonly endStatuses = END_STATUSES;
   protected readonly parseValue = parseValue;
   protected readonly edgeLabel = edgeLabel;
+  protected readonly hasDefault = computed(() => this.outgoing().some((e) => e.default));
   protected readonly typeLabel = computed(() => typeLabel(this.node().type));
   protected readonly config = computed(() => this.node().config ?? {});
   protected readonly timerMode = computed(() => (this.node().dueDateVariable !== undefined ? 'date' : 'duration'));
@@ -79,6 +87,11 @@ export class NodeProperties {
 
   protected setConfig(key: string, value: unknown): void {
     this.patch.emit({ config: { ...this.config(), [key]: value } });
+  }
+
+  /** Same as the flow's own panel: a default flow has no condition. */
+  protected setDefault(edgeId: string, on: boolean): void {
+    this.edgePatch.emit({ id: edgeId, patch: on ? { default: true, condition: undefined } : { default: undefined } });
   }
 
   protected setForm(form: NodeFormRef | undefined): void {

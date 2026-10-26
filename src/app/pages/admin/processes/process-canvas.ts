@@ -1,4 +1,4 @@
-import { Component, effect, input, output, untracked, viewChild } from '@angular/core';
+import { Component, computed, effect, input, output, untracked, viewChild } from '@angular/core';
 import {
   FCreateConnectionEvent, FFlowComponent, FFlowModule, FMoveNodesEvent, FReassignConnectionEvent, FSelectionChangeEvent,
 } from '@foblex/flow';
@@ -67,6 +67,7 @@ export class ProcessCanvas {
   protected readonly origin = ORIGIN;
   protected readonly typeLabel = typeLabel;
   protected readonly edgeLabel = edgeLabel;
+  protected readonly nodeNames = computed(() => Object.fromEntries(this.graph().nodes.map((n) => [n.id, n.name])));
 
   constructor() {
     // The page also selects (palette, new flows, problems); the library must agree, or clicking the step it still

@@ -35,21 +35,71 @@ describe('NodeProperties', () => {
     expect(s.removed()).toBe(1);
   });
 
-  it('lists the flows leaving a decision and opens the one clicked', () => {
+  it('sets the condition of each flow leaving a decision right in its panel', () => {
     const s = setup({ id: 'decision1', type: 'EXCLUSIVE_GATEWAY', name: 'Approve' });
     s.fixture.componentRef.setInput('outgoing', [
       { id: 'e1', source: 'decision1', target: 'task1', default: true },
       { id: 'e2', source: 'decision1', target: 'task2' },
     ]);
     s.fixture.componentRef.setInput('nodeNames', { task1: 'Manager review', task2: 'HR review' });
+    s.fixture.componentRef.setInput('conditionVariables', [{ key: 'nodes.legal.outcome', type: 'select', label: 'Legal outcome',
+      group: 'Task results', options: [{ value: 'APPROVE', label: 'APPROVE' }, { value: 'REJECT', label: 'REJECT' }] }]);
+    const edgePatches: unknown[] = [];
+    s.fixture.componentInstance.edgePatch.subscribe((p) => edgePatches.push(p));
     s.fixture.detectChanges();
-    expect(s.el('prop-flow-e1').textContent).toContain('To Manager review');
-    expect(s.el('prop-flow-e1').textContent).toContain('otherwise');
-    expect(s.el('prop-flow-e2').textContent).toContain('no condition yet');
+
+    expect(s.el('decision-flow-e1').textContent).toContain('To Manager review');
+    expect(s.el('rule-flow-e1')).toBeNull();
+    expect(s.el('decision-no-default')).toBeNull();
+    const rule = s.el('rule-flow-e2');
+    expect(rule).not.toBeNull();
+    (rule.querySelector('[data-testid="rule-add"]') as HTMLButtonElement).click();
+    expect(edgePatches.at(-1)).toEqual({ id: 'e2', patch: { condition: { var: 'nodes.legal.outcome', op: 'eq', value: 'APPROVE' } } });
+
+    s.el<HTMLInputElement>('decision-default-e2').click();
+    expect(edgePatches.at(-1)).toEqual({ id: 'e2', patch: { default: true, condition: undefined } });
+
     const opened: string[] = [];
     s.fixture.componentInstance.edgeOpen.subscribe((id) => opened.push(id));
     s.el<HTMLButtonElement>('prop-flow-e2').click();
     expect(opened).toEqual(['e2']);
+  });
+
+  it('warns when no flow leaving a decision is the default', () => {
+    const s = setup({ id: 'decision1', type: 'EXCLUSIVE_GATEWAY', name: 'Approve' });
+    s.fixture.componentRef.setInput('outgoing', [{ id: 'e1', source: 'decision1', target: 'task1' }]);
+    s.fixture.detectChanges();
+    expect(s.el('decision-no-default')).not.toBeNull();
+  });
+
+  it('builds a decision condition on a field no form lists, such as amount', () => {
+    const s = setup({ id: 'decision1', type: 'EXCLUSIVE_GATEWAY', name: 'Contract value?' });
+    const edge = { id: 'e1', source: 'decision1', target: 'task1' };
+    s.fixture.componentRef.setInput('outgoing', [edge]);
+    const edgePatches: { id: string; patch: { condition?: unknown } }[] = [];
+    s.fixture.componentInstance.edgePatch.subscribe((p) => edgePatches.push(p));
+    s.fixture.detectChanges();
+    const apply = () => {
+      s.fixture.componentRef.setInput('outgoing', [{ ...edge, condition: edgePatches.at(-1)!.patch.condition }]);
+      s.fixture.detectChanges();
+    };
+
+    s.el<HTMLButtonElement>('rule-add').click();
+    expect(edgePatches.at(-1)!.patch.condition).toEqual({ var: 'form.amount', op: 'eq', value: 0 });
+    apply();
+    expect(s.el<HTMLInputElement>('rule-custom-name').value).toBe('amount');
+    expect(s.el<HTMLSelectElement>('rule-custom-type').value).toBe('number');
+
+    s.set('rule-custom-name', 'contractValue');
+    apply();
+    s.set('rule-op', 'gt');
+    apply();
+    s.set('rule-value', '50000', 'input');
+    expect(edgePatches.at(-1)!.patch.condition).toEqual({ var: 'form.contractValue', op: 'gt', value: 50000 });
+    apply();
+
+    s.set('rule-custom-type', 'text');
+    expect(edgePatches.at(-1)!.patch.condition).toEqual({ var: 'form.contractValue', op: 'eq', value: '' });
   });
 
   it('says whether a parallel step splits, joins or is not connected', () => {

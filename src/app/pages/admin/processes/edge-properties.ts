@@ -1,8 +1,8 @@
 import { Component, input, linkedSignal, output, signal } from '@angular/core';
 import { parseCondition } from '../../../core/expression/condition';
-import { FormField } from '../../../core/forms/form.models';
 import { ProcessEdge, ProcessNode } from '../../../core/workflow/process.models';
 import { ConditionEditor } from '../forms/condition-editor';
+import { RuleField } from '../forms/condition-rows';
 
 export type EdgePatch = Pick<Partial<ProcessEdge>, 'outcome' | 'condition' | 'default'>;
 
@@ -16,8 +16,8 @@ export class EdgeProperties {
   readonly edge = input.required<ProcessEdge>();
   readonly source = input<ProcessNode | null>(null);
   readonly target = input<ProcessNode | null>(null);
-  /** Fields of the forms this process uses, for the rule builder. */
-  readonly fields = input<FormField[]>([]);
+  /** What the rule builder can test, keyed by full variable path (see processConditionVariables). */
+  readonly fields = input<RuleField[]>([]);
   readonly patch = output<EdgePatch>();
   readonly remove = output<void>();
   /** Back to the step the flow leaves. */

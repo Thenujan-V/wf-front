@@ -47,11 +47,9 @@
             <button type="button" class="btn btn-secondary px-3 py-1 text-xs" (click)="jsonMode.set(false)">Cancel</button>
           </div>
         } @else {
-          <app-condition-editor label="Take this flow when" testId="edge" [fields]="fields()" [condition]="edge().condition"
+          <app-condition-editor label="Take this flow when" testId="edge" prefix="" [fields]="fields()" [condition]="edge().condition"
+                                [allowCustom]="true"
                                 (conditionChange)="setCondition($event)" />
-          @if (!fields().length) {
-            <p class="text-xs text-muted">Give the start or a task a form to build conditions on its fields, or write the condition as JSON.</p>
-          }
           <button type="button" data-testid="edge-json-toggle" class="text-xs link" (click)="openJson()">Edit as JSON</button>
         }
       }

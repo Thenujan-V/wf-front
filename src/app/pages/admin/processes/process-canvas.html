@@ -6,7 +6,7 @@
       <f-connection [fConnectionId]="edge.id" [fSourceId]="'out:' + edge.source" [fTargetId]="'in:' + edge.target"
                     [attr.data-testid]="'edge-' + edge.id" [class.edge-selected]="edge.id === selectedEdge()">
         <f-connection-marker-arrow type="end" />
-        <div fConnectionContent [position]="0.5" class="rounded bg-surface px-1 text-[11px] text-muted" [class.hidden]="!edgeLabel(edge)">{{ edgeLabel(edge) }}</div>
+        <div fConnectionContent [position]="0.5" class="rounded bg-surface px-1 text-[11px] text-muted" [class.hidden]="!edgeLabel(edge)">{{ edgeLabel(edge, nodeNames()) }}</div>
       </f-connection>
     }
     @for (node of graph().nodes; track node.id) {
