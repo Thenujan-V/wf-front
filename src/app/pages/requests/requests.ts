@@ -5,7 +5,6 @@ import { Router, RouterLink } from '@angular/router';
 import { FormRenderer } from '../../core/forms/form-renderer';
 import { FieldError, FormDefinition } from '../../core/forms/form.models';
 import { FormsApi } from '../../core/forms/forms.api';
-import { EmbedService } from '../../core/embed/embed.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { StatusBadge } from '../../core/workflow/status-badge';
 import { WorkflowApi } from '../../core/workflow/workflow.api';
@@ -22,7 +21,6 @@ export class RequestsPage {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
   private readonly formsApi = inject(FormsApi);
-  private readonly embed = inject(EmbedService);
   private readonly renderer = viewChild(FormRenderer);
   protected readonly startForm = signal<FormDefinition | null>(null);
   protected readonly formFailed = signal(false);
@@ -114,7 +112,6 @@ export class RequestsPage {
       next: (started) => {
         this.submitting.set(false);
         this.toasts.success('Request submitted');
-        this.embed.instanceStarted(started.id);
         void this.router.navigate(['/requests', started.id]);
       },
       error: (error: unknown) => {

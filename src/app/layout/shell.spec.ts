@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ApplicationRef, Component, signal } from '@angular/core';
 import { AuthService } from '../core/auth/auth.service';
-import { EmbedService } from '../core/embed/embed.service';
 import { NotificationBell } from './notification-bell';
 import { Shell } from './shell';
 
@@ -10,7 +9,7 @@ import { Shell } from './shell';
 class BellStub {}
 
 describe('Shell', () => {
-  function render(roles: string[], embedded = false) {
+  function render(roles: string[]) {
     const logout = vi.fn();
     TestBed.configureTestingModule({
       imports: [Shell],
@@ -21,7 +20,6 @@ describe('Shell', () => {
           provide: AuthService,
           useValue: { displayName: signal('Alice Admin'), hasRole: (r: string) => roles.includes(r), logout },
         },
-        { provide: EmbedService, useValue: { embedded: signal(embedded) } },
       ],
     });
     TestBed.overrideComponent(Shell, { remove: { imports: [NotificationBell] }, add: { imports: [BellStub] } });
@@ -163,13 +161,5 @@ describe('Shell', () => {
     tick();
     expect(element.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(button);
-  });
-
-  it('shows only the page when embedded in auraDOCS', () => {
-    const { element } = render(['wms-admin'], true);
-    expect(element.querySelector('router-outlet')).not.toBeNull();
-    expect(element.querySelector('nav')).toBeNull();
-    expect(element.querySelector('header')).toBeNull();
-    expect(element.querySelector('app-notification-bell')).toBeNull();
   });
 });

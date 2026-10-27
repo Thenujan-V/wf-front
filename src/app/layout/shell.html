@@ -1,46 +1,40 @@
-@if (embedded()) {
-  <main data-testid="page" class="min-h-screen bg-bg p-4 text-ink md:p-6">
-    <router-outlet />
-  </main>
-} @else {
-  <div class="flex min-h-screen bg-bg text-ink">
-    <aside class="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface md:flex">
-      <ng-container *ngTemplateOutlet="menu" />
-    </aside>
+<div class="flex min-h-screen bg-bg text-ink">
+  <aside class="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface md:flex">
+    <ng-container *ngTemplateOutlet="menu" />
+  </aside>
 
-    @if (menuOpen()) {
-      <div class="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-        <div data-testid="menu-backdrop" class="absolute inset-0 bg-ink/40" (click)="closeMenu()"></div>
-        <aside class="relative flex h-full w-64 max-w-[85vw] flex-col overflow-y-auto border-r border-line bg-surface shadow-pop">
-          <button #closeButton type="button" data-testid="menu-close" class="icon-button absolute right-3 top-3" aria-label="Close the menu"
-                  (click)="closeMenu()">
-            <app-icon name="x" />
-          </button>
-          <ng-container *ngTemplateOutlet="menu" />
-        </aside>
-      </div>
-    }
-
-    <div data-testid="page" class="flex min-w-0 flex-1 flex-col" [attr.inert]="menuOpen() ? '' : null">
-      <header class="flex items-center gap-3 border-b border-line bg-surface px-4 py-2.5 md:px-6">
-        <button #menuButton type="button" data-testid="menu-button" class="icon-button md:hidden" aria-label="Open the menu"
-                [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(true)">
-          <app-icon name="menu" />
+  @if (menuOpen()) {
+    <div class="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+      <div data-testid="menu-backdrop" class="absolute inset-0 bg-ink/40" (click)="closeMenu()"></div>
+      <aside class="relative flex h-full w-64 max-w-[85vw] flex-col overflow-y-auto border-r border-line bg-surface shadow-pop">
+        <button #closeButton type="button" data-testid="menu-close" class="icon-button absolute right-3 top-3" aria-label="Close the menu"
+                (click)="closeMenu()">
+          <app-icon name="x" />
         </button>
-        <app-logo class="md:hidden" [compact]="true" />
-        <div class="ml-auto flex items-center gap-2">
-          <app-theme-switch />
-          <app-notification-bell />
-          <app-user-menu />
-        </div>
-      </header>
-
-      <main class="flex-1 p-4 md:p-6">
-        <router-outlet />
-      </main>
+        <ng-container *ngTemplateOutlet="menu" />
+      </aside>
     </div>
+  }
+
+  <div data-testid="page" class="flex min-w-0 flex-1 flex-col" [attr.inert]="menuOpen() ? '' : null">
+    <header class="flex items-center gap-3 border-b border-line bg-surface px-4 py-2.5 md:px-6">
+      <button #menuButton type="button" data-testid="menu-button" class="icon-button md:hidden" aria-label="Open the menu"
+              [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(true)">
+        <app-icon name="menu" />
+      </button>
+      <app-logo class="md:hidden" [compact]="true" />
+      <div class="ml-auto flex items-center gap-2">
+        <app-theme-switch />
+        <app-notification-bell />
+        <app-user-menu />
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 md:p-6">
+      <router-outlet />
+    </main>
   </div>
-}
+</div>
 
 <ng-template #menu>
   <app-logo class="px-5 py-4" />

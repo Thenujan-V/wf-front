@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { EmbedService } from '../../core/embed/embed.service';
+import { RUNTIME_CONFIG } from '../../core/config/runtime-config';
 import { fileNames } from '../../core/forms/form-values';
 import { UserName } from '../../core/identity/user-name';
 import { commentKey, isCommentKey } from '../../core/workflow/comments';
@@ -23,7 +23,7 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'failed';
 })
 export class RequestDetailPage {
   private readonly api = inject(WorkflowApi);
-  protected readonly embed = inject(EmbedService);
+  private readonly viewerUrl = inject(RUNTIME_CONFIG, { optional: true })?.auradocsViewerUrl;
 
   /** Route parameter :id. */
   readonly id = input.required<string>();
@@ -41,6 +41,11 @@ export class RequestDetailPage {
   protected readonly docId = computed(() => {
     const value = this.detail()?.variables['auradocsDocId'] ?? this.form()['auradocsDocId'];
     return typeof value === 'string' || typeof value === 'number' ? String(value) || null : null;
+  });
+  /** That document in auraDOCS, opened in a new tab; only when a viewer address is configured. */
+  protected readonly documentUrl = computed(() => {
+    const docId = this.docId();
+    return docId && this.viewerUrl ? this.viewerUrl.replace('{docId}', encodeURIComponent(docId)) : null;
   });
   /** What the requester submitted; approvers' comments are shown on the timeline instead. */
   protected readonly details = computed(() => Object.entries(this.form()).filter(([key]) => !isCommentKey(key)));

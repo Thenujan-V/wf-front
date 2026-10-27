@@ -91,17 +91,17 @@ describe('AuthService', () => {
   });
 
   it('returns to the page asked for after the Keycloak redirect', async () => {
-    history.replaceState(null, '', '/requests/7?embed=1');
+    history.replaceState(null, '', '/requests/7?tab=history');
     const auth = TestBed.inject(AuthService);
     (oauth['loadDiscoveryDocumentAndLogin'] as ReturnType<typeof vi.fn>).mockImplementation(async () => {
-      oauth['state'] = encodeURIComponent('/requests/7?embed=1');
+      oauth['state'] = encodeURIComponent('/requests/7?tab=history');
       history.replaceState(null, '', '/');
       return true;
     });
     await auth.init();
 
-    expect(oauth['loadDiscoveryDocumentAndLogin']).toHaveBeenCalledWith({ state: '/requests/7?embed=1' });
-    expect(window.location.pathname + window.location.search).toBe('/requests/7?embed=1');
+    expect(oauth['loadDiscoveryDocumentAndLogin']).toHaveBeenCalledWith({ state: '/requests/7?tab=history' });
+    expect(window.location.pathname + window.location.search).toBe('/requests/7?tab=history');
     history.replaceState(null, '', '/');
   });
 

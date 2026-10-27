@@ -4,8 +4,6 @@ import { InjectionToken } from '@angular/core';
 export interface RuntimeConfig {
   issuer: string;
   clientId: string;
-  /** Origins allowed to embed the app in an iframe and exchange messages with it. */
-  embedAllowedOrigins?: string[];
   /** auraDOCS page that shows a document; {docId} is replaced with the document id. */
   auradocsViewerUrl?: string;
 }
@@ -30,9 +28,6 @@ export async function loadRuntimeConfig(
     throw new Error(`${url} must contain string "issuer" and "clientId" values`);
   }
   const config: RuntimeConfig = { issuer: raw.issuer, clientId: raw.clientId };
-  if (Array.isArray(raw.embedAllowedOrigins)) {
-    config.embedAllowedOrigins = raw.embedAllowedOrigins.filter((origin): origin is string => typeof origin === 'string');
-  }
   if (typeof raw.auradocsViewerUrl === 'string' && raw.auradocsViewerUrl) {
     config.auradocsViewerUrl = raw.auradocsViewerUrl;
   }

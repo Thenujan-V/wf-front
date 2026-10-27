@@ -3,7 +3,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { EmbedService } from '../../core/embed/embed.service';
 import { problemInterceptor } from '../../core/http/problem.interceptor';
 import { ToastService } from '../../core/ui/toast.service';
 import { RequestsPage } from './requests';
@@ -91,13 +90,12 @@ describe('RequestsPage', () => {
     expect(element.textContent).toContain('No requests have been started for this document yet');
   });
 
-  it('starts a request for the filtered key and tells the embedding page', async () => {
+  it('starts a request for the filtered key', async () => {
     const { fixture, controller, byTestId } = setup('auradocs-doc:42');
     controller.expectOne('/api/workflow/catalog').flush([{ key: 'expense-approval', name: 'Expense approval', version: 2, startForm: null }]);
     controller.expectOne('/api/workflow/instances?businessKey=auradocs-doc:42').flush([]);
     await fixture.whenStable();
-    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    const started = vi.spyOn(TestBed.inject(EmbedService), 'instanceStarted');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     byTestId<HTMLButtonElement>('start-expense-approval').click();
     await fixture.whenStable();
@@ -109,7 +107,7 @@ describe('RequestsPage', () => {
     req.flush({ ...summary, id: 'new-3' });
     await fixture.whenStable();
 
-    expect(started).toHaveBeenCalledWith('new-3');
+    expect(navigate).toHaveBeenCalledWith(['/requests', 'new-3']);
   });
 
   it('explains invalid details instead of sending them', async () => {

@@ -14,7 +14,7 @@ function readSession(key: string): string | null {
   }
 }
 
-/** Where the person was going, carried through the Keycloak redirect (e.g. a request opened inside auraDOCS). */
+/** Where the person was going, carried through the Keycloak redirect (e.g. a request auraDOCS opened in a new tab). */
 function currentPath(): string {
   return window.location.pathname + window.location.search;
 }

@@ -10,13 +10,11 @@ describe('loadRuntimeConfig', () => {
     expect(config).toEqual({ issuer: 'http://kc/realms/wms', clientId: 'wms-frontend' });
   });
 
-  it('keeps the embedding settings when present', async () => {
+  it('keeps the auraDOCS viewer address when present', async () => {
     const config = await loadRuntimeConfig(fakeFetch(200, {
-      issuer: 'i', clientId: 'c', embedAllowedOrigins: ['http://docs', 3], auradocsViewerUrl: 'http://docs/view?docId={docId}',
+      issuer: 'i', clientId: 'c', auradocsViewerUrl: 'http://docs/view?docId={docId}',
     }));
-    expect(config).toEqual({
-      issuer: 'i', clientId: 'c', embedAllowedOrigins: ['http://docs'], auradocsViewerUrl: 'http://docs/view?docId={docId}',
-    });
+    expect(config).toEqual({ issuer: 'i', clientId: 'c', auradocsViewerUrl: 'http://docs/view?docId={docId}' });
   });
 
   it('reads the file it is given', async () => {
